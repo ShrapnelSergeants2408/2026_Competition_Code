@@ -20,3 +20,7 @@
 - [ ] Constants
 - [ ] SubSystem
 - [ ] Command
+
+# Library Documentation
+- [WPILib](docs.wpilib.org)
+<!-- - [YAGSL](docs.yagsl.com) (Yet Another Swerve Library) -->
