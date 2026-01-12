@@ -12,8 +12,11 @@ if (-not (Test-Path $scriptPath)) {
   throw "Missing review script at $scriptPath"
 }
 
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+$escapedScriptPath = $scriptPath.Replace("'", "''")
+$escapedRepoRoot = $RepoRoot.Replace("'", "''")
+$inlineCommand = "`$path='$escapedScriptPath'; & ([scriptblock]::Create((Get-Content -Raw -Path `$path))) -RepoRoot '$escapedRepoRoot'"
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"$inlineCommand`"" -WorkingDirectory $RepoRoot
 $trigger = New-ScheduledTaskTrigger -Daily -At $RunTime
-$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType InteractiveToken -RunLevel Limited
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null

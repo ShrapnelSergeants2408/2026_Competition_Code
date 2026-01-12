@@ -9,5 +9,7 @@ $dateStamp = Get-Date -Format "yyyy-MM-dd"
 $logFile = Join-Path $RepoRoot "logs\\daily\\$dateStamp.md"
 
 if (-not (Test-Path $logFile)) {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "scripts\\daily_codex_review.ps1")
+  $reviewPath = Join-Path $RepoRoot "scripts\\daily_codex_review.ps1"
+  $reviewScript = Get-Content -Raw -Path $reviewPath
+  & ([scriptblock]::Create($reviewScript)) -RepoRoot $RepoRoot
 }
