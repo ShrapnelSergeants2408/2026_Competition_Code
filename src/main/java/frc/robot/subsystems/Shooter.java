@@ -1,1 +1,1 @@
-public class Shooter {}
+public class Shooter extends SubsystemBase {}

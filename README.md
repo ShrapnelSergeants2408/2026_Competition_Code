@@ -48,7 +48,7 @@ which will detail the structure and implementation details of each of its respec
 comments can still be used to document code but i want to avoid large multi line comments.
 
 # AI
-Please no directly AI generated code in the repo. you may use AI to consult implementation ideas but the code must be written by a real person.
+Please no directly AI generated code in the repo's java code. you may use AI to consult implementation ideas but the code must be written by a real person.
 
 # Library Documentation
 - [WPILib](docs.wpilib.org)

@@ -4,7 +4,10 @@
     {
       "label": "Daily Codex Review (if missing)",
       "type": "shell",
-      "command": "cmd",
+      "command": "true",
+      "windows": {
+        "command": "cmd"
+      },
       "args": [
         "/d",
         "/c",
