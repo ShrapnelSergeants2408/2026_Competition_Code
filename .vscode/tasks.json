@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Daily Codex Review (if missing)",
+      "type": "shell",
+      "command": "true",
+      "windows": {
+        "command": "cmd"
+      },
+      "args": [
+        "/d",
+        "/c",
+        "powershell",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$path='${workspaceFolder}\\scripts\\run_daily_if_missing.ps1'; & ([scriptblock]::Create((Get-Content -Raw -Path $path)))"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    }
+  ]
+}
