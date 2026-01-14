@@ -1,5 +1,6 @@
 param(
-  [string]$RepoRoot = (Resolve-Path ".").Path
+  [string]$RepoRoot = (Resolve-Path ".").Path,
+  [string]$CodexPath = $env:CODEX_PATH
 )
 
 Set-StrictMode -Version Latest
@@ -19,11 +20,33 @@ try {
   $repoUrl = "(unknown)"
 }
 
+$codexExe = $null
+if ($CodexPath -and (Test-Path $CodexPath)) {
+  $codexExe = $CodexPath
+} else {
+  $codexCmd = Get-Command codex -ErrorAction SilentlyContinue
+  if ($codexCmd) {
+    $codexExe = $codexCmd.Path
+  } else {
+    $fallback = Get-ChildItem -Path "C:\\Users\\Public\\wpilib\\2026\\vscode\\data\\extensions\\openai.chatgpt-*\\bin\\windows-x86_64\\codex.exe" -ErrorAction SilentlyContinue |
+      Sort-Object FullName -Descending |
+      Select-Object -First 1 -ExpandProperty FullName
+    if ($fallback) {
+      $codexExe = $fallback
+    }
+  }
+}
+
 @"
 # Daily Codex Review ($dateStamp)
 Generated: $timeStamp
 Repo: $repoUrl
 "@ | Set-Content -Path $logFile -Encoding ASCII
+
+if (-not $codexExe) {
+  Add-Content -Path $logFile -Encoding ASCII -Value "`n### Summary`n- Codex run failed: codex.exe not found. Set CODEX_PATH or add codex to PATH.`n### Suggestions`n- No suggestions."
+  exit 0
+}
 
 git -C $RepoRoot fetch --all --prune --tags | Out-Null
 
@@ -90,7 +113,7 @@ Do not propose code changes or diffs.
 "@
     }
 
-    $null = $prompt | & codex -a never -s read-only exec -C $worktreePath --output-last-message $outputFile -
+    $null = $prompt | & $codexExe -a never -s read-only exec -C $worktreePath --output-last-message $outputFile -
 
     if (Test-Path $outputFile) {
       $content = Get-Content -Path $outputFile -Raw
