@@ -185,3 +185,6 @@ compile_commands.json
 
 # Eclipse generated file for annotation processors
 .factorypath
+
+# ignore metals directory that scala extension insists on creating.
+.metals/
