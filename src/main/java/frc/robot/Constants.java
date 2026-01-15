@@ -14,10 +14,15 @@ package frc.robot;
 
 // NO IMPERIAL UNITS
 public final class Constants {
-  
+  public static enum DriverControlMode {
+    ARCADE_DRIVE,
+    TANK_DRIVE,
+  }
+  public static final DriverControlMode INITIAL_DRIVER_CONTROL_MODE = DriverControlMode.ARCADE_DRIVE;
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
   }
+
 
 
   public static class Climber {
