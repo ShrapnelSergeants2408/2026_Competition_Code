@@ -14,11 +14,6 @@ package frc.robot;
 
 // NO IMPERIAL UNITS
 public final class Constants {
-  public static enum DriverControlMode {
-    ARCADE_DRIVE,
-    TANK_DRIVE,
-  }
-  public static final DriverControlMode INITIAL_DRIVER_CONTROL_MODE = DriverControlMode.ARCADE_DRIVE;
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
   }
@@ -32,6 +27,8 @@ public final class Constants {
   public static class DriveTrain {
     // distance from center of robot to center of wheel (cm)
     public final static double WHEEL_DISTANCE = 0.0; // cm
+    public final static int LEFT_MOTOR_PORT = 0;
+    public final static int RIGHT_MOTOR_PORT = 1;
   }
 
   public static class ShooterSupplier {
