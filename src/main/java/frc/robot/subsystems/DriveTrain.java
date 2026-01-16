@@ -10,7 +10,6 @@ import frc.robot.Result;
 import static frc.robot.Constants.DriveTrain.*;
 
 import java.util.List;
-import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 public class DriveTrain extends SubsystemBase{
     public enum DriveMode {
@@ -36,13 +35,6 @@ public class DriveTrain extends SubsystemBase{
     
     public Command driveCommand(DoubleSupplier fnX,DoubleSupplier fnY){
         return new RunCommand(() -> this.drive(fnX.getAsDouble(),fnY.getAsDouble()));
-    }
-    public Command toggleDriveModeListener(BooleanSupplier fnButtonPress){
-        return new RunCommand(() -> {
-            if (fnButtonPress.getAsBoolean()){
-                this.toggleDriveMode();
-            }
-        });
     }
 
     public void toggleDriveMode(){

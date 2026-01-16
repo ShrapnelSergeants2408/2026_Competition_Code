@@ -52,5 +52,6 @@ Please no directly AI generated code in the repo's java code. you may use AI to 
 
 # Documentation
 - [WPILib](docs.wpilib.org)
+- [AdvantageKit](https://docs.advantagekit.org/)
 - [Team 6328](example.com)
 <!-- - [YAGSL](docs.yagsl.com) (Yet Another Swerve Library) -->
