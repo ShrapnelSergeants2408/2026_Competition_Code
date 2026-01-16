@@ -5,8 +5,12 @@ import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Result;
+
 import static frc.robot.Constants.DriveTrain.*;
 
+import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 public class DriveTrain extends SubsystemBase{
     public enum DriveMode {
@@ -22,7 +26,7 @@ public class DriveTrain extends SubsystemBase{
 
     public DriveTrain(){
         
-        rightMotor.setInverted(true);
+        rightMotor.setInverted(true); // common on FRC Robots
     }
 
     @Override
@@ -32,6 +36,13 @@ public class DriveTrain extends SubsystemBase{
     
     public Command driveCommand(DoubleSupplier fnX,DoubleSupplier fnY){
         return new RunCommand(() -> this.drive(fnX.getAsDouble(),fnY.getAsDouble()));
+    }
+    public Command toggleDriveModeListener(BooleanSupplier fnButtonPress){
+        return new RunCommand(() -> {
+            if (fnButtonPress.getAsBoolean()){
+                this.toggleDriveMode();
+            }
+        });
     }
 
     public void toggleDriveMode(){
@@ -52,6 +63,7 @@ public class DriveTrain extends SubsystemBase{
 
     // Drive Methods
     // x,y = controller joystick axes x,y
+    // abstract drive method
     public void drive(double x,double y){
         switch (this.driveMode){
             case ARCADE -> arcadeDrive(x,y);
@@ -59,12 +71,18 @@ public class DriveTrain extends SubsystemBase{
         }
     }
     private void arcadeDrive(double x,double y){
-        
+        // speed = x ; turn = y
+        this.driver.arcadeDrive(-x,y);
     }
 
     private void tankDrive(double x, double y){
-
+        // leftSpeed = x ; rightSpeed = y
+        this.driver.tankDrive(-x,-y);
     }
-    
+
+    // Testing
+    public static List<Result> testDriveTrain(){
+        return List.of(Result.pass("dummy test"));
+    }
 }
 
