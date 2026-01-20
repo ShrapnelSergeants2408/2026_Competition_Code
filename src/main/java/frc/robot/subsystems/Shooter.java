@@ -1,17 +1,22 @@
 package frc.robot.subsystems;
 
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-import com.revrobotics.CANSparkMax.IdleMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import static frc.robot.Constants.ShooterConstants.*;
 
 public class Shooter extends SubsystemBase {
 
     // Motors
-    private final CANSparkMax shooterMotor;
-    private final CANSparkMax feederMotor;
+    private final SparkMax shooterMotor;
+    private final SparkMax feederMotor;
 
-    // CAN IDs (CHANGE THESE TO MATCH YOUR ROBOT)
+    // CAN IDs 
     private static final int SHOOTER_MOTOR_ID = 1;
     private static final int FEEDER_MOTOR_ID = 2;
 
@@ -19,22 +24,25 @@ public class Shooter extends SubsystemBase {
     private static final double SHOOTER_SPEED = 0.9; // Shoots the ball
     private static final double FEEDER_SPEED = 0.6;  // Feeds ball into shooter
 
-    public Shooter() {
-        shooterMotor = new CANSparkMax(SHOOTER_MOTOR_ID, MotorType.kBrushless);
-        feederMotor = new CANSparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
-
-        // Reset to safe defaults
-        shooterMotor.restoreFactoryDefaults();
-        feederMotor.restoreFactoryDefaults();
-
-        // Brake helps stop faster when released
-        shooterMotor.setIdleMode(IdleMode.kBrake);
-        feederMotor.setIdleMode(IdleMode.kBrake);
-
-        // Optional safety limits
-        shooterMotor.setSmartCurrentLimit(40);
-        feederMotor.setSmartCurrentLimit(30);
+    /**
+         * @param nominalVoltage 
+         * 
+         */
+        public Shooter(int nominalVoltage) {
+            shooterMotor = new SparkMax(SHOOTER_MOTOR_ID, MotorType.kBrushless);
+            feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
+    
+    
+            // Optional safety limits
+            SparkMaxConfig config = new SparkMaxConfig();
+            config.voltageCompensation(12);
+            config.smartCurrentLimit(STALL_LIMIT);
+            
+            config.idleMode(IdleMode.kBrake);
+            shooterMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+            feederMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
     }
+
 
     /** Spins the shooter wheel to launch the ball */
     public void startShooter() {

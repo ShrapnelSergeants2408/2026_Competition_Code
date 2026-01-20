@@ -35,7 +35,7 @@ public final class Constants {
 
   }
 
-  public static class Shooter {
-
+  public static class ShooterConstants {
+    public final static int STALL_LIMIT = 30;
   }
 }
