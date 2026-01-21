@@ -11,3 +11,8 @@ WPILib and other external libraries provide many classes which interface with ro
 
 ### SparkMax
 To use sparkmax... (TODO)
+
+# Commands
+old way to do commands is to create a Command class which produces essentially a function using the initialize(), execute(), end(), and isFinished(). However new method is to define a function and then pass it to InstantCommand(), RunCommand, StartEndCommand(), the new method is prefered and easier to work with, as it requires less boilerplate.
+
+Commands are high level functions of the subsystem which are coordinated by the Robot's CommandScheduler. Command functions 

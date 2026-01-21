@@ -12,5 +12,7 @@ this is a default file which defines the behavior we want our robot runtime to h
 ## RobotContainer.java
 this is a default file which defines the actual structure of our robot, this is where we initialize subsystems and configure the controller, this is wher most modification happens relative to the other folders in this directory.
 
+## Result.java
+this is a custom class used for testing each component of the robot programmically, each test returns one Result, which is then reported to in the console (or networktables... unsure.) 
 ## subsystems/
 This is the directory which stores all our subsystem classes,
