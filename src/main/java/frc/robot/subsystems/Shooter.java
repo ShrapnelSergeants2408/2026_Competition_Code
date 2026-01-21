@@ -16,18 +16,6 @@ public class Shooter extends SubsystemBase {
     private final SparkMax shooterMotor;
     private final SparkMax feederMotor;
 
-    // CAN IDs
-    private static final int SHOOTER_MOTOR_ID = 1;
-    private static final int FEEDER_MOTOR_ID = 2;
-
-    // Motor speeds
-    private static final double SHOOTER_SPEED = 0.9; // Shoots the ball
-    private static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
-
-    /**
-     * @param nominalVoltage
-     *
-     */
     public Shooter(int nominalVoltage) {
         shooterMotor = new SparkMax(SHOOTER_MOTOR_ID, MotorType.kBrushless);
         feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
