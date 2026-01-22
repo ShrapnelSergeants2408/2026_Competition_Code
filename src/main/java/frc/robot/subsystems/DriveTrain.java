@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Result;
 
-import static frc.robot.Constants.DriveTrain.*;
+import static frc.robot.Constants.DriveTrainConstants.*;
 
 import java.util.List;
 import java.util.function.DoubleSupplier;
