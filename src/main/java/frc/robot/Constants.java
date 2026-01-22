@@ -25,8 +25,8 @@ public final class Constants {
 
     public static class DriveTrainConstants {
 
-        // distance from center of robot to center of wheel (cm)
-        public static final double WHEEL_DISTANCE = 0.0; // cm
+        // // distance from center of robot to center of wheel (cm)
+        // public static final double WHEEL_DISTANCE = 0.0; // cm
         public static final int LEFT_MOTOR_PORT = 0;
         public static final int RIGHT_MOTOR_PORT = 1;
     }
@@ -43,5 +43,6 @@ public final class Constants {
         // Motor speeds
         public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
         public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
+        public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
     }
 }

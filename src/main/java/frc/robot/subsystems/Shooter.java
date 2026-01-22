@@ -22,7 +22,7 @@ public class Shooter extends SubsystemBase {
 
         // Optional safety limits
         SparkMaxConfig config = new SparkMaxConfig();
-        config.voltageCompensation(12);
+        config.voltageCompensation(NOMINAL_VOLTAGE);
         config.smartCurrentLimit(STALL_LIMIT);
 
         config.idleMode(IdleMode.kBrake);
