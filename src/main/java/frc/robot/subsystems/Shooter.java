@@ -1,3 +1,11 @@
+//TODO: change shooter from brake to coast
+//TODO:  add SmartDashboard display - at least shooter RPM
+//TODO:  implement commands to run methods
+//TODO:  do we need sensors to determine if fuel is ready to launch?
+//TODO:  should intake be off before shooting?
+//TODO:  wait until RPM is high enough before allowing a shot
+
+
 package frc.robot.subsystems;
 
 import static frc.robot.Constants.ShooterConstants.*;
