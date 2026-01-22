@@ -21,9 +21,9 @@ public final class Constants {
         public static final int kDriverControllerPort = 0;
     }
 
-    public static class Climber {}
+    public static class ClimberConstants {}
 
-    public static class DriveTrain {
+    public static class DriveTrainConstants {
 
         // distance from center of robot to center of wheel (cm)
         public static final double WHEEL_DISTANCE = 0.0; // cm
@@ -31,17 +31,17 @@ public final class Constants {
         public static final int RIGHT_MOTOR_PORT = 1;
     }
 
-    public static class ShooterSupplier {}
+    public static class IntakeConstants {}
 
     public static class ShooterConstants {
 
         public static final int STALL_LIMIT = 30;
         // CAN IDs
-        private static final int SHOOTER_MOTOR_ID = 1;
-        private static final int FEEDER_MOTOR_ID = 2;
+        public static final int SHOOTER_MOTOR_ID = 1;
+        public static final int FEEDER_MOTOR_ID = 2;
 
         // Motor speeds
-        private static final double SHOOTER_SPEED = 0.9; // Shoots the ball
-        private static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
+        public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
+        public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
     }
 }
