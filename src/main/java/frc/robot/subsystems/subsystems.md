@@ -17,5 +17,4 @@ old way to do commands is to create a Command class which produces essentially a
 
 Commands are high level functions of the subsystem which are coordinated by the Robot's CommandScheduler. Command functions 
 
-# Shooter
-Shooter is the subsystem used for shooting the fuel into the scoring net. it consists of 2 sparkmax motors, the shooter motor and feeding motor, which are configured via the SparkMaxConfig class to add 
+shooter.java- added shooter and had to change words and shooter id and motor 

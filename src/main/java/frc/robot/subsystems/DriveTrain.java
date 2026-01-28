@@ -61,7 +61,6 @@ public class DriveTrain extends SubsystemBase {
     }
 
     // Drive Methods
-    // x,y = controller joystick axes x,y
     // abstract drive method
     public void drive(double x, double y) {
         switch (this.driveMode) {
