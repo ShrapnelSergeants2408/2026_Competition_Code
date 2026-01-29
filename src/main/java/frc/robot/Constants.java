@@ -45,11 +45,16 @@ public final class Constants {
         public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
         public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
         
-      public static final double SHOOTER_kP = 0.0002;
-    public static final double SHOOTER_kI = 0.0;
-    public static final double SHOOTER_kD = 0.0;
-    public static final double SHOOTER_kFF = 0.00018;
-    public static final int SHOOTER_MOTOR = 5; // your motor ID
+         // Current limit for the shooter motor (in amps)
+         public static final int SHOOTER_CURRENT_LIMIT = 40; // adjust as needed
+         public static final int FEEDER_CURRENT_LIMIT = 30; // adjust as needed
+         // PID / feedforward constants
+         public static final double TARGET_RPM_10_FEET = 2950.0;
+         public static final double SHOOTER_KP = 0.0;       // proportional (starting value)
+         public static final double SHOOTER_KI = 0.0;       // integral
+         public static final double SHOOTER_KD = 0.0;       // derivative
+         public static final double SHOOTER_KV = 0.12;      // feedforward
+        }
 
 
     }
