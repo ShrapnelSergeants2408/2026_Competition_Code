@@ -44,5 +44,13 @@ public final class Constants {
         public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
         public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
         public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
+        
+      public static final double SHOOTER_kP = 0.0002;
+    public static final double SHOOTER_kI = 0.0;
+    public static final double SHOOTER_kD = 0.0;
+    public static final double SHOOTER_kFF = 0.00018;
+    public static final int SHOOTER_MOTOR = 5; // your motor ID
+
+
     }
 }
