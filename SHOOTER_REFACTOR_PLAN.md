@@ -608,99 +608,328 @@ private void checkSafetyLimits() {
 
 ---
 
-## Implementation Checklist
+## Incremental Implementation Plan (For Beginning Programmers)
 
-### Prerequisites
-- [ ] Install Phoenix 6 library (for TalonFX)
-- [ ] Install REVLib (for SparkMax feeder)
-- [ ] Install WPILib vision/NetworkTables libraries
-- [ ] Verify all CAN IDs in constants match robot
+**Philosophy**: Build one small, testable feature at a time. Each milestone adds ONE new concept and can be demonstrated independently. Don't move to the next milestone until the current one works!
 
-### Phase 1: Constants (Est. 30 min)
-- [ ] Add ShooterConstants with all RPM lookup values
-- [ ] Add VisionConstants
-- [ ] Calculate preliminary RPM values for lookup table
-- [ ] Add PID starting values
-- [ ] Add simulation constants
+---
 
-### Phase 2: Vision Integration (Est. 2 hours)
-- [ ] Create VisionSubsystem.java
-- [ ] Implement NetworkTables communication
-- [ ] Implement distance calculation
-- [ ] Add vision telemetry
-- [ ] Test vision system independently
-- [ ] Add simulation support for vision
+### Prerequisites (Do Once at Start)
+- [ ] Install Phoenix 6 library via VS Code (Ctrl+Shift+P → "WPILib: Manage Vendor Libraries" → "Install new library (online)" → Phoenix 6)
+- [ ] Install REVLib library (same process)
+- [ ] Verify CAN IDs in constants match your actual robot wiring
 
-### Phase 3: Shooter Hardware Refactor (Est. 3 hours)
-- [ ] Replace SparkMax import with TalonFX
-- [ ] Update motor instantiation
-- [ ] Configure TalonFX for velocity control
-- [ ] Implement PID configuration
-- [ ] Add encoder velocity reading
-- [ ] Configure current limits
-- [ ] Test motor spinning (no PID)
+---
 
-### Phase 4: RPM Control (Est. 2 hours)
-- [ ] Implement RPM lookup table logic
-- [ ] Add interpolation between distance points
-- [ ] Implement setTargetDistance() method
-- [ ] Implement velocity PID control
-- [ ] Test RPM setpoint tracking
+### 🎯 Milestone 1: Just Make the Motor Spin (Open Loop)
+**Goal**: Get the Kraken X60 motor to spin at a fixed percentage power. No PID, no sensors, just basic motor control.
 
-### Phase 5: Sensor Integration (Est. 1 hour)
-- [ ] Add DigitalInput for light sensor
-- [ ] Implement hasBall() method
-- [ ] Test sensor detection
-- [ ] Add sensor simulation
+**What You'll Learn**: TalonFX basics, motor configuration, safety limits
 
-### Phase 6: State Machine (Est. 2 hours)
-- [ ] Implement ShooterState enum
-- [ ] Implement state transitions
-- [ ] Implement canShoot() logic
-- [ ] Add safety interlocks
-- [ ] Test state machine flow
+**Tasks**:
+- [ ] Create minimal ShooterConstants class with:
+  - `SHOOTER_MOTOR_ID = 1`
+  - `SHOOTER_CURRENT_LIMIT = 60`
+- [ ] Create new Shooter.java subsystem:
+  - Import: `com.ctre.phoenix6.hardware.TalonFX`
+  - Instantiate: `TalonFX shooterMotor = new TalonFX(SHOOTER_MOTOR_ID)`
+  - Add method: `spinAtSpeed(double percentOutput)` - uses `DutyCycleOut` request
+  - Add method: `stop()` - sets output to 0
+  - Configure current limits in constructor
+- [ ] Instantiate Shooter in RobotContainer
+- [ ] Bind A button to spin shooter at 50% power (0.5)
+- [ ] Bind B button to stop shooter
 
-### Phase 7: Commands (Est. 2 hours)
-- [ ] Create inline command factories
-- [ ] Implement VisionAssistedShoot command
-- [ ] Implement ShootSequence command
-- [ ] Test command execution
+**Test**: Press A, motor should spin at half speed. Press B, it stops. DONE!
 
-### Phase 8: RobotContainer Integration (Est. 1 hour)
-- [ ] Instantiate subsystems
-- [ ] Add button bindings
-- [ ] Set default commands
-- [ ] Test all button functions
+**Expected Time**: 1 hour
 
-### Phase 9: Telemetry (Est. 1.5 hours)
-- [ ] Add SmartDashboard entries for all telemetry
-- [ ] Create Shuffleboard tab layout
-- [ ] Add tunable PID parameters
-- [ ] Implement updatePIDFromDashboard()
-- [ ] Test live tuning
+---
 
-### Phase 10: Simulation (Est. 2 hours)
-- [ ] Add FlywheelSim to Shooter
-- [ ] Implement simulationPeriodic()
-- [ ] Add vision simulation
-- [ ] Add sensor simulation
-- [ ] Test in simulation mode
+### 🎯 Milestone 2: Closed-Loop RPM Control (Fixed Speed)
+**Goal**: Make the motor spin at a specific RPM (2950 RPM = 10 foot shot) using PID control.
 
-### Phase 11: Testing (Est. 3 hours)
-- [ ] Write unit tests
-- [ ] Run simulation tests
-- [ ] Characterize shooter with SysId (if available)
-- [ ] Tune PID values empirically
-- [ ] Validate RPM lookup table
-- [ ] Test full shooting sequence
-- [ ] Verify safety limits
+**What You'll Learn**: Velocity PID control, encoder feedback, TalonFX configuration
 
-### Phase 12: Refinement (Est. 2 hours)
-- [ ] Optimize PID tuning
-- [ ] Adjust RPM lookup values based on testing
-- [ ] Fine-tune state machine timing
-- [ ] Add additional telemetry as needed
-- [ ] Document final configuration
+**Tasks**:
+- [ ] Add to ShooterConstants:
+  - `TARGET_RPM_10_FEET = 2950.0`
+  - `SHOOTER_KP = 0.1` (starting value)
+  - `SHOOTER_KI = 0.0`
+  - `SHOOTER_KD = 0.0`
+  - `SHOOTER_KV = 0.12` (feedforward)
+- [ ] Update Shooter.java:
+  - Create `VelocityVoltage velocityRequest` in constructor
+  - Configure Slot0 PID values in constructor
+  - Add method: `setTargetRPM(double rpm)` - sends velocity request
+  - Add method: `getCurrentRPM()` - reads motor velocity and converts to RPM
+  - Add method: `isAtTargetSpeed(double tolerance)` - checks if within ±tolerance RPM
+- [ ] Update button binding:
+  - A button: `setTargetRPM(2950)` instead of percentage
+  - B button: still stops motor
+
+**Test**: Press A, motor spins up to ~2950 RPM. Use Phoenix Tuner X to verify actual RPM.
+
+**Expected Time**: 1.5 hours
+
+---
+
+### 🎯 Milestone 3: Add Feeder Motor (Complete Shooting)
+**Goal**: Add the feeder motor (Neo on SparkMax) to push balls into the spinning shooter.
+
+**What You'll Learn**: Multi-motor coordination, REVLib integration
+
+**Tasks**:
+- [ ] Add to ShooterConstants:
+  - `FEEDER_MOTOR_ID = 2`
+  - `FEEDER_SPEED = 0.6`
+  - `FEEDER_CURRENT_LIMIT = 30`
+- [ ] Update Shooter.java:
+  - Import: `com.revrobotics.CANSparkMax`
+  - Instantiate feeder motor (Neo brushless)
+  - Add method: `startFeeder()` - runs feeder at FEEDER_SPEED
+  - Add method: `stopFeeder()` - stops feeder motor
+  - Configure feeder current limit and brake mode
+- [ ] Update button bindings:
+  - A button: starts shooter at 2950 RPM (unchanged)
+  - Right trigger: runs feeder while held (stops when released)
+  - B button: emergency stop (stops both motors)
+
+**Test**: Press A (shooter spins), hold right trigger (feeder runs), release (feeder stops). Can launch a ball!
+
+**Expected Time**: 1 hour
+
+---
+
+### 🎯 Milestone 4: Add Basic Telemetry
+**Goal**: Display shooter status on SmartDashboard so you can see what's happening.
+
+**What You'll Learn**: SmartDashboard, debugging with telemetry
+
+**Tasks**:
+- [ ] Add method to Shooter.java: `logTelemetry()`
+- [ ] In `periodic()`, call `logTelemetry()`
+- [ ] Log to SmartDashboard:
+  - Current RPM (read from encoder)
+  - Target RPM
+  - Shooter motor current (amps)
+  - Feeder state (on/off)
+  - Is at target speed? (boolean)
+
+**Test**: Open SmartDashboard/Shuffleboard, see live RPM and current values updating.
+
+**Expected Time**: 30 minutes
+
+---
+
+### 🎯 Milestone 5: Add Light Sensor (Ball Detection)
+**Goal**: Detect when a ball is in position to shoot using a light sensor.
+
+**What You'll Learn**: Digital input sensors, boolean logic
+
+**Tasks**:
+- [ ] Add to ShooterConstants:
+  - `LIGHT_SENSOR_DIO_PORT = 0` (adjust to your wiring)
+- [ ] Update Shooter.java:
+  - Import: `edu.wpi.first.wpilibj.DigitalInput`
+  - Instantiate: `DigitalInput lightSensor = new DigitalInput(LIGHT_SENSOR_DIO_PORT)`
+  - Add method: `hasBall()` - returns `!lightSensor.get()` (inverted if beam-break)
+  - Add to telemetry: "Ball Detected" boolean
+- [ ] Update feeder logic:
+  - Modify `startFeeder()` to check `hasBall()` first (safety feature)
+  - Print warning if trying to feed with no ball
+
+**Test**: Block light sensor, "Ball Detected" shows true on dashboard.
+
+**Expected Time**: 45 minutes
+
+---
+
+### 🎯 Milestone 6: Smart Shooting (Only Feed When Ready)
+**Goal**: Only allow feeder to run when shooter is at target RPM AND ball is detected.
+
+**What You'll Learn**: Safety interlocks, state checking
+
+**Tasks**:
+- [ ] Add to ShooterConstants:
+  - `RPM_TOLERANCE = 50.0` (within ±50 RPM is "ready")
+- [ ] Add method to Shooter.java: `canShoot()`
+  - Returns true if: shooter enabled AND at target RPM AND has ball
+- [ ] Create command factory: `shootCommand()`
+  - Runs feeder continuously while button held
+  - BUT only if `canShoot()` returns true
+  - Otherwise does nothing
+- [ ] Update right trigger binding to use `shootCommand()`
+- [ ] Add "Ready to Shoot" to telemetry
+
+**Test**: Press A (shooter spins). Right trigger does nothing until RPM stabilizes AND ball is loaded. Then it feeds!
+
+**Expected Time**: 1 hour
+
+---
+
+### 🎯 Milestone 7: RPM Lookup Table (Manual Distance Selection)
+**Goal**: Allow selecting different shooting distances with different buttons, each using a different RPM.
+
+**What You'll Learn**: Lookup tables, data structures, interpolation
+
+**Tasks**:
+- [ ] Add to ShooterConstants:
+  - `DISTANCE_RPM_MAP` array (distance in feet → RPM)
+  - All 7 distances (5', 7.5', 10', 12.5', 15', 17.5', 20')
+- [ ] Add to Shooter.java:
+  - `double currentTargetDistance = 10.0` (state variable)
+  - Method: `getRPMFromDistance(double distanceFeet)` - looks up/interpolates RPM
+  - Method: `setTargetDistance(double distanceFeet)` - updates distance and calls `setTargetRPM()`
+  - Add current distance to telemetry
+- [ ] Update RobotContainer button bindings:
+  - POV Up: set distance to 15 feet
+  - POV Down: set distance to 10 feet (default)
+  - POV Left: set distance to 7.5 feet
+  - POV Right: set distance to 12.5 feet
+
+**Test**: Press POV directions, see target RPM change on dashboard based on distance.
+
+**Expected Time**: 1.5 hours
+
+---
+
+### 🎯 Milestone 8: Vision System Integration
+**Goal**: Automatically measure distance to target using Limelight/PhotonVision.
+
+**What You'll Learn**: NetworkTables, vision processing, trigonometry, fallback logic
+
+**Tasks**:
+- [ ] Add VisionConstants class:
+  - Camera height, target height, camera angle
+  - Limelight NetworkTable name
+  - Min/max valid distances
+- [ ] Create VisionSubsystem.java:
+  - Connect to Limelight NetworkTable
+  - Method: `hasTarget()` - checks if target visible
+  - Method: `getDistanceToTarget()` - calculates distance using trig
+  - Add vision telemetry (distance, target valid)
+- [ ] Instantiate VisionSubsystem in RobotContainer
+- [ ] Set default command on shooter:
+  - Continuously update distance from vision
+  - If vision invalid, use 10' default
+- [ ] Add "Vision Active" and "Vision Distance" to telemetry
+
+**Test**: Point camera at target, see distance on dashboard. Cover camera, should fall back to 10'.
+
+**Expected Time**: 2 hours
+
+---
+
+### 🎯 Milestone 9: Live PID Tuning (Test Mode)
+**Goal**: Tune PID values from dashboard without redeploying code.
+
+**What You'll Learn**: Shuffleboard SendableChooser, live tuning, PID optimization
+
+**Tasks**:
+- [ ] Add to Shooter.java:
+  - Create dashboard entries for kP, kI, kD, kV (editable)
+  - Method: `updatePIDFromDashboard()` - reads values and reconfigures TalonFX
+  - Call `updatePIDFromDashboard()` in `periodic()` when in test mode
+- [ ] Add dashboard controls:
+  - Sliders or number inputs for PID constants
+  - Button to apply PID changes
+  - Graphs showing RPM over time
+
+**Test**: Change kP on dashboard, see how it affects RPM response. Tune until smooth acceleration.
+
+**Expected Time**: 1 hour
+
+---
+
+### 🎯 Milestone 10: Add Simulation Support
+**Goal**: Test code without the physical robot using WPILib simulation.
+
+**What You'll Learn**: Physics simulation, testing without hardware
+
+**Tasks**:
+- [ ] Add to Shooter.java:
+  - Import: `edu.wpi.first.wpilibj.simulation.FlywheelSim`
+  - Create FlywheelSim with Kraken motor specs
+  - Override `simulationPeriodic()`
+  - Update sim with applied voltage
+  - Set simulated motor position/velocity
+- [ ] Add to VisionSubsystem.java:
+  - Override `simulationPeriodic()`
+  - Set fake vision values for testing
+- [ ] Test in simulation:
+  - Run "Simulate Robot Code"
+  - Use Simulation GUI to verify motor speeds
+
+**Test**: Run simulation, press buttons in sim GUI, see shooter spin up in telemetry.
+
+**Expected Time**: 2 hours
+
+---
+
+### 🎯 Milestone 11: Polish and Tune
+**Goal**: Optimize performance, add safety features, finalize for competition.
+
+**What You'll Learn**: System integration, safety, performance optimization
+
+**Tasks**:
+- [ ] Test on actual robot, adjust RPM lookup table based on results
+- [ ] Fine-tune PID values for fast, stable response
+- [ ] Add motor temperature monitoring
+- [ ] Add automatic cooldown if temperature too high
+- [ ] Verify current limits prevent brownouts
+- [ ] Add LED indicators for shooter state (optional)
+- [ ] Create emergency stop button (already in Milestone 3)
+- [ ] Document final PID values and RPM table
+- [ ] Train drivers on button layout
+
+**Test**: Run through complete shooting sequences. Shoot from various distances. Verify accuracy.
+
+**Expected Time**: 3 hours
+
+---
+
+## Total Incremental Timeline
+
+| Milestone | Time Estimate | Cumulative | What Works After This Milestone |
+|-----------|---------------|------------|----------------------------------|
+| 1. Motor Spin | 1 hour | 1 hour | Motor spins at fixed power |
+| 2. RPM Control | 1.5 hours | 2.5 hours | Motor holds 2950 RPM |
+| 3. Feeder | 1 hour | 3.5 hours | Can shoot balls at 10' distance |
+| 4. Telemetry | 0.5 hours | 4 hours | Can see what's happening |
+| 5. Light Sensor | 0.75 hours | 4.75 hours | Detects ball presence |
+| 6. Smart Shooting | 1 hour | 5.75 hours | Only shoots when ready |
+| 7. Lookup Table | 1.5 hours | 7.25 hours | Can shoot multiple distances |
+| 8. Vision | 2 hours | 9.25 hours | Automatic distance measurement |
+| 9. PID Tuning | 1 hour | 10.25 hours | Easy optimization |
+| 10. Simulation | 2 hours | 12.25 hours | Can test without robot |
+| 11. Polish | 3 hours | 15.25 hours | Competition ready! |
+
+**Total**: ~15 hours of focused work, spread across multiple sessions
+
+---
+
+## Key Principles for Success
+
+1. **One Thing at a Time**: Complete each milestone fully before moving on
+2. **Test Immediately**: After every change, test it. Don't write lots of code before testing
+3. **Use Phoenix Tuner**: Install Phoenix Tuner X to monitor motor behavior in real-time
+4. **Commit Often**: Git commit after each working milestone
+5. **Ask for Help**: If stuck for >30 minutes, ask a mentor or search documentation
+6. **Keep It Simple**: Don't add "cool features" until basics work perfectly
+7. **Safety First**: Test current limits and e-stop before running at full speed
+
+---
+
+## Common Beginner Mistakes to Avoid
+
+- ❌ Trying to implement everything at once → ✅ One milestone at a time
+- ❌ Not testing motor direction → ✅ Test with low power first, invert if needed
+- ❌ Forgetting to configure current limits → ✅ Set limits before running motor
+- ❌ Not checking CAN IDs → ✅ Verify IDs match physical robot
+- ❌ Deploying without checking code → ✅ Use Phoenix Tuner to verify motor works
+- ❌ Skipping telemetry → ✅ Always add dashboard display early
+- ❌ Ignoring errors in driver station → ✅ Read and fix all errors immediately
 
 ---
 
