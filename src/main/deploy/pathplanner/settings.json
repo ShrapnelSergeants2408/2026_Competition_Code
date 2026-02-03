@@ -5,18 +5,20 @@
   "pathFolders": [
     "Test"
   ],
-  "autoFolders": [],
-  "defaultMaxVel": 3.0,
-  "defaultMaxAccel": 3.0,
+  "autoFolders": [
+    "actual autos"
+  ],
+  "defaultMaxVel": 2.0,
+  "defaultMaxAccel": 2.0,
   "defaultMaxAngVel": 540.0,
   "defaultMaxAngAccel": 720.0,
   "defaultNominalVoltage": 12.0,
   "robotMass": 61.235,
   "robotMOI": 6.883,
   "robotTrackwidth": 0.546,
-  "driveWheelRadius": 0.1524,
+  "driveWheelRadius": 0.0508,
   "driveGearing": 8.46,
-  "maxDriveSpeed": 3.87,
+  "maxDriveSpeed": 3.0,
   "driveMotorType": "NEO",
   "driveCurrentLimit": 40.0,
   "wheelCOF": 1.2,

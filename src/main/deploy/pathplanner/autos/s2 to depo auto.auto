@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "start 2"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "depo f s2"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "actual autos",
+  "choreoAuto": false
+}

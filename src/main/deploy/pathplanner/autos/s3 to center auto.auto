@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "start 3"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "s3 center"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "actual autos",
+  "choreoAuto": false
+}
