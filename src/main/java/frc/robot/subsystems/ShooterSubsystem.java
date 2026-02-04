@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import static frc.robot.Constants.ShooterConstants.*;
+ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
@@ -108,4 +109,39 @@ feederMotor.configure(
     public void stopFeeder() {
         feederMotor.set(0.0);
     }
+
+
+@Override
+public void periodic() {
+    logTelemetry();
+}
+
+public void logTelemetry() {
+    // Current shooter RPM (simulated or real if encoder exists)
+    SmartDashboard.putNumber("Shooter Current RPM", getCurrentRPM());
+
+    // Target shooter RPM
+    SmartDashboard.putNumber("Shooter Target RPM", lastTargetRPM);
+
+    // Shooter motor current (in amps)
+    // Get the supply current signal
+var currentSignal = shooterMotor.getSupplyCurrent();
+
+// Convert signal to a double (amps)
+double currentAmps = currentSignal.getValueAsDouble();
+
+// Send to SmartDashboard
+SmartDashboard.putNumber("Shooter Motor Current (A)", currentAmps);
+
+    
+    // Feeder state: on/off
+    boolean feederOn = feederMotor.get() != 0.0;
+    SmartDashboard.putBoolean("Feeder On", feederOn);
+
+    // Whether shooter is at target speed (use some tolerance)
+    SmartDashboard.putBoolean("At Target Speed", isAtTargetSpeed(50)); // example tolerance 50 RPM
+
+
+
+
 }
