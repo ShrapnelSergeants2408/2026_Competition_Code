@@ -46,6 +46,19 @@ public class RobotContainer {
     // Y button → stop shooter immediately when pressed
     m_driverController.y()
         .onTrue(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
+
+    // Right trigger: run feeder while held, stop when released
+    m_driverController.rightTrigger()
+    .whileTrue(Commands.run(() -> m_shooterSubsystem.startFeeder(), m_shooterSubsystem))
+    .onFalse(Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem));
+
+    m_driverController.b()
+    .onTrue(Commands.run(() -> {
+        m_shooterSubsystem.stop();       // stop shooter
+        m_shooterSubsystem.stopFeeder(); // stop feeder
+    }, m_shooterSubsystem));
+      
+    }
   }
 
   /**

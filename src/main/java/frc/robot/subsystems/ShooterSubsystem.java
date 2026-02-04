@@ -6,11 +6,12 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.controls.DutyCycleOut;
-
+import com.revrobotics.spark.config.SparkBaseConfig;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.jni.CANSparkJNI;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.SparkMaxConfig;
-import com.revrobotics.spark.SparkMaxConfig.SparkMaxIdleMode;
+import com.revrobotics.spark.IdleMode; // Updated import for IdleMode
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class ShooterSubsystem extends SubsystemBase {
@@ -27,7 +28,6 @@ public class ShooterSubsystem extends SubsystemBase {
     public ShooterSubsystem() {
 
         // Shooter motor setup
-        // Instantiate the TalonFX motor
         shooterMotor = new TalonFX(SHOOTER_MOTOR_ID);
 
         // Configure current limits for shooter
@@ -41,22 +41,35 @@ public class ShooterSubsystem extends SubsystemBase {
         shooterMotor.getConfigurator().apply(shooterConfig);
 
         // Feeder motor setup
-        // Instantiate SparkMax for feeder
         feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
 
-        // Create config object
-        SparkMaxConfig feederConfig = new SparkMaxConfig();
+        // Modern Spark MAX configuration
+        // Feeder motor setup
 
-        // Current limit
-        feederConfig.CurrentLimits.SupplyCurrentLimit = SHOOTER_CURRENT_LIMIT;
-        feederConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
+// Create a default configuration object
+SparkMaxConfig feederConfig = new SparkMaxConfig();
 
-        // Idle mode
-        feederConfig.MotorOutput.IdleMode = SparkMaxIdleMode.kBrake;
+// Set current limit in the config
 
-        // Apply configuration
-        feederMotor.configure(feederConfig, SparkMax.kResetSafeParameters, SparkMax.kPersistParameters);
-    }
+feederConfig.smartCurrentLimit(FEEDER_CURRENT_LIMIT, FEEDER_CURRENT_LIMIT);
+feederConfig.idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+// Create a default configuration object
+
+// Set current limit
+feederConfig.smartCurrentLimit(FEEDER_CURRENT_LIMIT, FEEDER_CURRENT_LIMIT);
+
+// Set idle mode
+ feederConfig.idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+
+// Apply the configuration with reset and persist modes
+feederMotor.configure(
+    feederConfig,
+    SparkMax.ResetMode.kResetSafeParameters,
+    SparkMax.PersistMode.kPersistParameters
+);
+;}
+
+
 
     // Spin shooter at a fixed percent output
     public void spinAtSpeed(double percentOutput) {
