@@ -55,7 +55,8 @@ public final class Constants {
          public static final double SHOOTER_KD = 0.0;       // derivative
          public static final double SHOOTER_KV = 0.12;      // feedforward
         }
-
+         public static class SensorConstants {
+        public static final int LIGHT_SENSOR_DIO_PORT = 0; // Add your DIO port here
 
     }
 }
