@@ -40,7 +40,7 @@ public class RobotContainer {
 
     // X button → spin shooter to fixed 2950 RPM (open-loop)
     m_driverController.x()
-        .whileTrue(Commands.run(() -> m_shooterSubsystem.setTargetRPM(2950.0), m_shooterSubsystem))
+        .whileTrue(Commands.run(() -> m_shooterSubsystem.setTargetRPM(2000.0), m_shooterSubsystem))
         .onFalse(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
 
     // Y button → stop shooter immediately when pressed

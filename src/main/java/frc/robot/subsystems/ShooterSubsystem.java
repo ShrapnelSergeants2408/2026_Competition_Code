@@ -6,17 +6,23 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DigitalInput;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
+import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj.DriverStation;
-
+import com.ctre.phoenix6.signals.NeutralModeValue;
+    
 public class ShooterSubsystem extends SubsystemBase {
 
     private final TalonFX shooterMotor;
@@ -27,12 +33,32 @@ public class ShooterSubsystem extends SubsystemBase {
     public ShooterSubsystem() {
         // Shooter motor setup
         shooterMotor = new TalonFX(SHOOTER_MOTOR_ID);
-        TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
+    
+    OpenLoopRampsConfigs openLoopRamps = new OpenLoopRampsConfigs()
+    .withDutyCycleOpenLoopRampPeriod(0.5);
+
+TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
+    .withMotorOutput(
+        new MotorOutputConfigs()
+            .withNeutralMode(NeutralModeValue.Coast)
+    )
+    .withCurrentLimits(
+        new CurrentLimitsConfigs()
+            .withStatorCurrentLimit(120)
+            .withStatorCurrentLimitEnable(true)
+    )
+    .withOpenLoopRamps(openLoopRamps);
+
+            
+           
         CurrentLimitsConfigs shooterLimits = new CurrentLimitsConfigs();
         shooterLimits.StatorCurrentLimitEnable = true;
         shooterLimits.StatorCurrentLimit = SHOOTER_CURRENT_LIMIT;
         shooterConfig.CurrentLimits = shooterLimits;
         shooterMotor.getConfigurator().apply(shooterConfig);
+        //shooterMotor.setNeutralMode(NeutralModeValue.Coast);// coast mode
+        
+
 
         // Feeder motor setup
         feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
@@ -46,8 +72,8 @@ public class ShooterSubsystem extends SubsystemBase {
 
         feederMotor.configure(
             feederConfig,
-            SparkMax.ResetMode.kNoResetSafeParameters,
-            SparkMax.PersistMode.kNoPersistParameters
+            ResetMode.kResetSafeParameters,
+            PersistMode.kPersistParameters
         );
 
         // Light sensor setup
