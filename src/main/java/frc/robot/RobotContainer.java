@@ -48,9 +48,14 @@ public class RobotContainer {
         .onTrue(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
 
     // Right trigger: run feeder while held, stop when released
-    m_driverController.rightTrigger()
-    .whileTrue(Commands.run(() -> m_shooterSubsystem.startFeeder(), m_shooterSubsystem))
-    .onFalse(Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem));
+   m_driverController.rightTrigger()
+    .whileTrue(
+        m_shooterSubsystem.shooterCommand()  // uses canShoot() internally
+    )
+    .onFalse(
+        Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem)
+    );
+
 
     m_driverController.b()
     .onTrue(Commands.run(() -> {
@@ -72,4 +77,4 @@ public class RobotContainer {
     return Autos.exampleAuto(m_exampleSubsystem);
   }
   */
-}
+

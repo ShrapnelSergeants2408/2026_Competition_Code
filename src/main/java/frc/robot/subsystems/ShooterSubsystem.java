@@ -1,94 +1,72 @@
 package frc.robot.subsystems;
 
 import static frc.robot.Constants.ShooterConstants.*;
- import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
+import static frc.robot.Constants.SensorConstants.*;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.DigitalInput;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.controls.DutyCycleOut;
+import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
-import com.revrobotics.jni.CANSparkJNI;
-import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.IdleMode; // Updated import for IdleMode
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj.DriverStation;
 
 public class ShooterSubsystem extends SubsystemBase {
 
-    // Shooter motor
     private final TalonFX shooterMotor;
-
-    // Feeder motor
     private final SparkMax feederMotor;
-
-    // Optional: store the last target RPM
+    private final DigitalInput lightSensor;
     private double lastTargetRPM = 0.0;
 
     public ShooterSubsystem() {
-
         // Shooter motor setup
         shooterMotor = new TalonFX(SHOOTER_MOTOR_ID);
-
-        // Configure current limits for shooter
         TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
         CurrentLimitsConfigs shooterLimits = new CurrentLimitsConfigs();
         shooterLimits.StatorCurrentLimitEnable = true;
         shooterLimits.StatorCurrentLimit = SHOOTER_CURRENT_LIMIT;
         shooterConfig.CurrentLimits = shooterLimits;
-
-        // Apply configuration to TalonFX
         shooterMotor.getConfigurator().apply(shooterConfig);
 
         // Feeder motor setup
         feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
+        SparkMaxConfig feederConfig = new SparkMaxConfig();
+        feederConfig
+            .idleMode(SparkBaseConfig.IdleMode.kBrake)
+            .smartCurrentLimit(FEEDER_CURRENT_LIMIT)
+            .inverted(false)
+            .openLoopRampRate(0.0)
+            .closedLoopRampRate(0.0);
 
-        // Modern Spark MAX configuration
-        // Feeder motor setup
+        feederMotor.configure(
+            feederConfig,
+            SparkMax.ResetMode.kNoResetSafeParameters,
+            SparkMax.PersistMode.kNoPersistParameters
+        );
 
-// Create a default configuration object
-SparkMaxConfig feederConfig = new SparkMaxConfig();
-
-// Set current limit in the config
-
-feederConfig.smartCurrentLimit(FEEDER_CURRENT_LIMIT, FEEDER_CURRENT_LIMIT);
-feederConfig.idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
-// Create a default configuration object
-
-// Set current limit
-feederConfig.smartCurrentLimit(FEEDER_CURRENT_LIMIT, FEEDER_CURRENT_LIMIT);
-
-// Set idle mode
- feederConfig.idleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
-
-// Apply the configuration with reset and persist modes
-feederMotor.configure(
-    feederConfig,
-    SparkMax.ResetMode.kResetSafeParameters,
-    SparkMax.PersistMode.kPersistParameters
-);
-;}
-
-
+        // Light sensor setup
+        lightSensor = new DigitalInput(LIGHT_SENSOR_DIO_PORT);
+    }
 
     // Spin shooter at a fixed percent output
     public void spinAtSpeed(double percentOutput) {
         shooterMotor.setControl(new DutyCycleOut(percentOutput));
     }
 
-    // Stop shooter
     public void stop() {
         shooterMotor.setControl(new DutyCycleOut(0.0));
     }
 
-    // Target RPM methods (open-loop simulation)
     public void setTargetRPM(double rpm) {
         lastTargetRPM = rpm;
-
         double percentOutput = rpm / TARGET_RPM_10_FEET;
         percentOutput = Math.max(0.0, Math.min(percentOutput, 1.0));
-
         spinAtSpeed(percentOutput);
     }
 
@@ -103,6 +81,13 @@ feederMotor.configure(
 
     // Feeder motor methods
     public void startFeeder() {
+        if (!hasBall()) {
+            DriverStation.reportWarning(
+                "Feeder blocked: attempted to feed with NO ball detected",
+                false
+            );
+            return;
+        }
         feederMotor.set(FEEDER_SPEED);
     }
 
@@ -110,38 +95,48 @@ feederMotor.configure(
         feederMotor.set(0.0);
     }
 
+    // Ball detection (beam break inverted)
+    public boolean hasBall() {
+        return !lightSensor.get();
+    }
 
-@Override
-public void periodic() {
-    logTelemetry();
-}
+    // Returns true if shooter is at target RPM AND a ball is present
+    public boolean canShoot() {
+        return isAtTargetSpeed(RPM_TOLERANCE) && hasBall();
+    }
 
-public void logTelemetry() {
-    // Current shooter RPM (simulated or real if encoder exists)
-    SmartDashboard.putNumber("Shooter Current RPM", getCurrentRPM());
+    // Command factory: run feeder while button held, only if canShoot() is true
+    public Command shooterCommand() {
+        return new RunCommand(
+            () -> {
+                if (canShoot()) {
+                    startFeeder();
+                } else {
+                    stopFeeder();
+                }
+            },
+            this // requires this subsystem
+        );
+    }
 
-    // Target shooter RPM
-    SmartDashboard.putNumber("Shooter Target RPM", lastTargetRPM);
+    @Override
+    public void periodic() {
+        logTelemetry();
+    }
 
-    // Shooter motor current (in amps)
-    // Get the supply current signal
-var currentSignal = shooterMotor.getSupplyCurrent();
+    public void logTelemetry() {
+        SmartDashboard.putNumber("Shooter Current RPM", getCurrentRPM());
+        SmartDashboard.putNumber("Shooter Target RPM", lastTargetRPM);
 
-// Convert signal to a double (amps)
-double currentAmps = currentSignal.getValueAsDouble();
+        var currentSignal = shooterMotor.getSupplyCurrent();
+        double currentAmps = currentSignal.getValueAsDouble();
+        SmartDashboard.putNumber("Shooter Motor Current (A)", currentAmps);
 
-// Send to SmartDashboard
-SmartDashboard.putNumber("Shooter Motor Current (A)", currentAmps);
+        boolean feederOn = feederMotor.get() != 0.0;
+        SmartDashboard.putBoolean("Feeder On", feederOn);
 
-    
-    // Feeder state: on/off
-    boolean feederOn = feederMotor.get() != 0.0;
-    SmartDashboard.putBoolean("Feeder On", feederOn);
-
-    // Whether shooter is at target speed (use some tolerance)
-    SmartDashboard.putBoolean("At Target Speed", isAtTargetSpeed(50)); // example tolerance 50 RPM
-
-
-
-
+        SmartDashboard.putBoolean("At Target Speed", isAtTargetSpeed(RPM_TOLERANCE));
+        SmartDashboard.putBoolean("Ball Detected", hasBall());
+        SmartDashboard.putBoolean("Ready to Shoot", canShoot());
+    }
 }
