@@ -24,7 +24,6 @@ public class RobotContainer {
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
-  public RobotContainer() {
     // Configure the trigger bindings
     configureBindings();
   }
@@ -64,6 +63,21 @@ public class RobotContainer {
     }, m_shooterSubsystem));
       
     }
+
+     new Trigger(() -> m_driverController.getHID().getPOV() == 0)
+    .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(15.0), m_shooterSubsystem));
+
+    m_driverController.povDown()
+        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(10.0), m_shooterSubsystem));
+
+    m_driverController.povLeft()
+        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(7.5), m_shooterSubsystem));
+
+    m_driverController.povRight()
+        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(12.5), m_shooterSubsystem));
+}
+ 
+ 
   }
 
   /**

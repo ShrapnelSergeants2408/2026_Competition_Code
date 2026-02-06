@@ -55,6 +55,12 @@ public final class Constants {
          public static final double SHOOTER_KD = 0.0;       // derivative
          public static final double SHOOTER_KV = 0.12;      // feedforward
          public static final double RPM_TOLERANCE = 50.0; // within+50 rpm is ready
+        
+          // Distance to RPM mapping (distance in feet -> target RPM)
+          // You can adjust these RPMs based on shooter testing
+         public static final double[] DISTANCES_FEET = {5, 7.5, 12.5, 15, 17.5, 20};
+         public static final double[] DISTANCE_RPM_MAP = {2500, 2700, 2950, 3100, 3200, 3300};
+       
         }
          public static class SensorConstants {
         public static final int LIGHT_SENSOR_DIO_PORT = 0; // Add your DIO port here

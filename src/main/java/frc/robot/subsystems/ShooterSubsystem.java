@@ -22,7 +22,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj.DriverStation;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-    
+
 public class ShooterSubsystem extends SubsystemBase {
 
     private final TalonFX shooterMotor;
@@ -30,57 +30,50 @@ public class ShooterSubsystem extends SubsystemBase {
     private final DigitalInput lightSensor;
     private double lastTargetRPM = 0.0;
 
+    // Distance-to-RPM system
+    private double currentTargetDistance = 10.0;
+
     public ShooterSubsystem() {
         // Shooter motor setup
         shooterMotor = new TalonFX(SHOOTER_MOTOR_ID);
-    
-    OpenLoopRampsConfigs openLoopRamps = new OpenLoopRampsConfigs()
-    .withDutyCycleOpenLoopRampPeriod(0.5);
 
-TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
-    .withMotorOutput(
-        new MotorOutputConfigs()
-            .withNeutralMode(NeutralModeValue.Coast)
-    )
-    .withCurrentLimits(
-        new CurrentLimitsConfigs()
-            .withStatorCurrentLimit(120)
-            .withStatorCurrentLimitEnable(true)
-    )
-    .withOpenLoopRamps(openLoopRamps);
+        OpenLoopRampsConfigs openLoopRamps = new OpenLoopRampsConfigs()
+                .withDutyCycleOpenLoopRampPeriod(0.5);
 
-            
-           
-        CurrentLimitsConfigs shooterLimits = new CurrentLimitsConfigs();
-        shooterLimits.StatorCurrentLimitEnable = true;
-        shooterLimits.StatorCurrentLimit = SHOOTER_CURRENT_LIMIT;
-        shooterConfig.CurrentLimits = shooterLimits;
+        TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
+                .withMotorOutput(
+                        new MotorOutputConfigs().withNeutralMode(NeutralModeValue.Coast)
+                )
+                .withCurrentLimits(
+                        new CurrentLimitsConfigs()
+                                .withStatorCurrentLimit(SHOOTER_CURRENT_LIMIT)
+                                .withStatorCurrentLimitEnable(true)
+                )
+                .withOpenLoopRamps(openLoopRamps);
+
         shooterMotor.getConfigurator().apply(shooterConfig);
-        //shooterMotor.setNeutralMode(NeutralModeValue.Coast);// coast mode
-        
-
 
         // Feeder motor setup
         feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
         SparkMaxConfig feederConfig = new SparkMaxConfig();
         feederConfig
-            .idleMode(SparkBaseConfig.IdleMode.kBrake)
-            .smartCurrentLimit(FEEDER_CURRENT_LIMIT)
-            .inverted(false)
-            .openLoopRampRate(0.0)
-            .closedLoopRampRate(0.0);
+                .idleMode(SparkBaseConfig.IdleMode.kBrake)
+                .smartCurrentLimit(FEEDER_CURRENT_LIMIT)
+                .inverted(false)
+                .openLoopRampRate(0.0)
+                .closedLoopRampRate(0.0);
 
         feederMotor.configure(
-            feederConfig,
-            ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters
+                feederConfig,
+                ResetMode.kResetSafeParameters,
+                PersistMode.kPersistParameters
         );
 
         // Light sensor setup
         lightSensor = new DigitalInput(LIGHT_SENSOR_DIO_PORT);
     }
 
-    // Spin shooter at a fixed percent output
+    // --- Shooter control ---
     public void spinAtSpeed(double percentOutput) {
         shooterMotor.setControl(new DutyCycleOut(percentOutput));
     }
@@ -101,16 +94,43 @@ TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
     }
 
     public boolean isAtTargetSpeed(double tolerance) {
-        double currentRPM = getCurrentRPM();
-        return Math.abs(currentRPM - lastTargetRPM) <= tolerance;
+        return Math.abs(getCurrentRPM() - lastTargetRPM) <= tolerance;
     }
 
-    // Feeder motor methods
+    // --- Distance-to-RPM system ---
+    public double getRPMFromDistance(double distanceFeet) {
+        double[] distances = DISTANCES_FEET;
+        double[] rpms = DISTANCE_RPM_MAP;
+
+        if (distanceFeet <= distances[0]) return rpms[0];
+        if (distanceFeet >= distances[distances.length - 1]) return rpms[rpms.length - 1];
+
+        for (int i = 0; i < distances.length - 1; i++) {
+            if (distanceFeet >= distances[i] && distanceFeet <= distances[i + 1]) {
+                double ratio = (distanceFeet - distances[i]) / (distances[i + 1] - distances[i]);
+                return rpms[i] + ratio * (rpms[i + 1] - rpms[i]);
+            }
+        }
+
+        return rpms[rpms.length - 1];
+    }
+
+    public void setTargetDistance(double distanceFeet) {
+        currentTargetDistance = distanceFeet;
+        double rpm = getRPMFromDistance(distanceFeet);
+        setTargetRPM(rpm);
+    }
+
+    public double getTargetDistance() {
+        return currentTargetDistance;
+    }
+
+    // --- Feeder motor ---
     public void startFeeder() {
         if (!hasBall()) {
             DriverStation.reportWarning(
-                "Feeder blocked: attempted to feed with NO ball detected",
-                false
+                    "Feeder blocked: attempted to feed with NO ball detected",
+                    false
             );
             return;
         }
@@ -121,27 +141,23 @@ TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
         feederMotor.set(0.0);
     }
 
-    // Ball detection (beam break inverted)
+    // --- Ball detection ---
     public boolean hasBall() {
         return !lightSensor.get();
     }
 
-    // Returns true if shooter is at target RPM AND a ball is present
+    // --- Shooter commands ---
     public boolean canShoot() {
         return isAtTargetSpeed(RPM_TOLERANCE) && hasBall();
     }
 
-    // Command factory: run feeder while button held, only if canShoot() is true
     public Command shooterCommand() {
         return new RunCommand(
-            () -> {
-                if (canShoot()) {
-                    startFeeder();
-                } else {
-                    stopFeeder();
-                }
-            },
-            this // requires this subsystem
+                () -> {
+                    if (canShoot()) startFeeder();
+                    else stopFeeder();
+                },
+                this
         );
     }
 
@@ -153,6 +169,7 @@ TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
     public void logTelemetry() {
         SmartDashboard.putNumber("Shooter Current RPM", getCurrentRPM());
         SmartDashboard.putNumber("Shooter Target RPM", lastTargetRPM);
+        SmartDashboard.putNumber("Target Distance (ft)", currentTargetDistance);
 
         var currentSignal = shooterMotor.getSupplyCurrent();
         double currentAmps = currentSignal.getValueAsDouble();
