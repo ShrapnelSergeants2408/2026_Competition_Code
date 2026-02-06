@@ -4,6 +4,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.ShooterSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.Commands; // <-- for run()
 
 /**
@@ -34,9 +35,8 @@ public class RobotContainer {
    */
   private void configureBindings() {
 
-    // -------------------------------
     // Xbox buttons for shooter
-    // -------------------------------
+    
 
     // X button → spin shooter to fixed 2950 RPM (open-loop)
     m_driverController.x()
@@ -63,7 +63,7 @@ public class RobotContainer {
         m_shooterSubsystem.stopFeeder(); // stop feeder
     }, m_shooterSubsystem));
       
-    }
+    
     
      new Trigger(() -> m_driverController.getHID().getPOV() == 0)
     .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(15.0), m_shooterSubsystem));
