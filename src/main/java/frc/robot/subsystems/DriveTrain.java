@@ -1,4 +1,9 @@
 package frc.robot.subsystems;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
+import edu.wpi.first.math.kinematics.Odometry;
+import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
@@ -11,6 +16,10 @@ import static frc.robot.Constants.DriveTrain.*;
 
 import java.util.List;
 import java.util.function.DoubleSupplier;
+
+import com.revrobotics.RelativeEncoder;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
 public class DriveTrain extends SubsystemBase{
     public enum DriveMode {
         ARCADE,
@@ -18,10 +27,17 @@ public class DriveTrain extends SubsystemBase{
     }
     private DriveMode driveMode = DriveMode.ARCADE;
 
-    private final MotorController leftMotor = new PWMSparkMax(LEFT_MOTOR_PORT);
-    private final MotorController rightMotor = new PWMSparkMax(RIGHT_MOTOR_PORT);
+    private final SparkMax leftMotor = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
+    private final SparkMax rightMotor = new SparkMax(RIGHT_MOTOR_PORT, MotorType.kBrushless);
 
     private final DifferentialDrive driver = new DifferentialDrive(leftMotor, rightMotor);
+
+    //reset pose test CONFUSION
+    private final RelativeEncoder leftEncoder = leftMotor.getEncoder();
+    private final RelativeEncoder rightEncoder = rightMotor.getEncoder();
+
+    //private final Rotation2d gyroAngle = 
+    private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance, Pose2d initialPoseMeters);
 
     public DriveTrain(){
         
@@ -76,5 +92,28 @@ public class DriveTrain extends SubsystemBase{
     public static List<Result> testDriveTrain(){
         return List.of(Result.pass("dummy test"));
     }
+
+    //get pose test
+
+    public Pose2d getPose(){
+        Pose2d pose = new Pose2d(0, 0, new Rotation2d(0.0));
+
+        return pose;
+    }
+
+    //reset pose test
+    public static double getAnalogGyroAngle(int handle){
+        handle = 0;
+    }
+
+    //odometry class
+    public static double DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance){
+
+    }
+    //poseOdometry = new DifferentialDriveOdometry();
+
+    public void resetPose(){
+
+    } 
 }
 

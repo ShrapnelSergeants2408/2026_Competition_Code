@@ -29,6 +29,11 @@ public final class Constants {
     public final static double WHEEL_DISTANCE = 0.0; // cm
     public final static int LEFT_MOTOR_PORT = 0;
     public final static int RIGHT_MOTOR_PORT = 1;
+
+    //encoders
+    public final static int leftEncoder = 2;
+    public final static int rightEncoder = 3;
+
   }
 
   public static class ShooterSupplier {
@@ -38,4 +43,5 @@ public final class Constants {
   public static class Shooter {
 
   }
+
 }
