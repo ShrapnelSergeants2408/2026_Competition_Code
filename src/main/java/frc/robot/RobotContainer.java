@@ -1,14 +1,11 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
-//import frc.robot.subsystems.ExampleSubsystem;
+import frc.robot.subsystems.ShooterSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.Commands; // <-- for run()
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -19,6 +16,9 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 public class RobotContainer {
   // The robot's subsystems and commands are defined here...
   //private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
+
+  // Instantiate the shooter subsystem
+  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController =
@@ -31,22 +31,54 @@ public class RobotContainer {
   }
 
   /**
-   * Use this method to define your trigger->command mappings. Triggers can be created via the
-   * {@link Trigger#Trigger(java.util.function.BooleanSupplier)} constructor with an arbitrary
-   * predicate, or via the named factories in {@link
-   * edu.wpi.first.wpilibj2.command.button.CommandGenericHID}'s subclasses for {@link
-   * CommandXboxController Xbox}/{@link edu.wpi.first.wpilibj2.command.button.CommandPS4Controller
-   * PS4} controllers or {@link edu.wpi.first.wpilibj2.command.button.CommandJoystick Flight
-   * joysticks}.
+   * Use this method to define your trigger->command mappings.
    */
   private void configureBindings() {
-    // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
-    //new Trigger(m_exampleSubsystem::exampleCondition)
-    //    .onTrue(new ExampleCommand(m_exampleSubsystem));
 
-    // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
-    // cancelling on release.
-    //m_driverController.b().whileTrue(m_exampleSubsystem.exampleMethodCommand());
+    // Xbox buttons for shooter
+    
+
+    // X button → spin shooter to fixed 2950 RPM (open-loop)
+    m_driverController.x()
+        .whileTrue(Commands.run(() -> m_shooterSubsystem.setTargetRPM(2000.0), m_shooterSubsystem))
+        .onFalse(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
+
+    // Y button → stop shooter immediately when pressed
+    m_driverController.y()
+        .onTrue(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
+
+    // Right trigger: run feeder while held, stop when released
+   m_driverController.rightTrigger()
+    .whileTrue(
+        m_shooterSubsystem.shooterCommand()  // uses canShoot() internally
+    )
+    .onFalse(
+        Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem)
+    );
+
+
+    m_driverController.b()
+    .onTrue(Commands.run(() -> {
+        m_shooterSubsystem.stop();       // stop shooter
+        m_shooterSubsystem.stopFeeder(); // stop feeder
+    }, m_shooterSubsystem));
+      
+    
+    
+     new Trigger(() -> m_driverController.getHID().getPOV() == 0)
+    .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(15.0), m_shooterSubsystem));
+
+    m_driverController.povDown()
+        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(10.0), m_shooterSubsystem));
+
+    m_driverController.povLeft()
+        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(7.5), m_shooterSubsystem));
+
+    m_driverController.povRight()
+        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(12.5), m_shooterSubsystem));
+}
+ 
+ 
   }
 
   /**
@@ -54,12 +86,10 @@ public class RobotContainer {
    *
    * @return the command to run in autonomous
    */
-
   /* 
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
     return Autos.exampleAuto(m_exampleSubsystem);
   }
-*/
+  */
 
-}
