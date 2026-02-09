@@ -11,6 +11,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Result;
+import com.studica.frc.AHRS;
+import edu.wpi.first.wpilibj.SPI;
 
 import static frc.robot.Constants.DriveTrain.*;
 
@@ -106,9 +108,20 @@ public class DriveTrain extends SubsystemBase{
         handle = 0;
     }
 
+    //get heading
+    private final AHRS gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
+
+    public Rotation2d getHeading() {
+        return Rotation2d.fromDegrees(-gyro.getAngle()); // Inverted for CCW positive
+    }
+
+    public void resetGyro() {
+        gyro.reset();
+    }
+
     //odometry class
     public static double DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance){
-
+        //gyroAngle = .getAnalogGyroAngle();
     }
     //poseOdometry = new DifferentialDriveOdometry();
 

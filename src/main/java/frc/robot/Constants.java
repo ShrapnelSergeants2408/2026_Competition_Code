@@ -33,6 +33,8 @@ public final class Constants {
     //encoders
     public final static int leftEncoder = 2;
     public final static int rightEncoder = 3;
+    
+    public final static int positionEncoder = 11;
 
   }
 
