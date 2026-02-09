@@ -2,94 +2,65 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.ShooterSubsystem;
+import frc.robot.subsystems.Intake;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import edu.wpi.first.wpilibj2.command.Commands; // <-- for run()
+import edu.wpi.first.wpilibj2.command.Commands;
 
-/**
- * This class is where the bulk of the robot should be declared. Since Command-based is a
- * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
- * periodic methods (other than the scheduler calls). Instead, the structure of the robot (including
- * subsystems, commands, and trigger mappings) should be declared here.
- */
 public class RobotContainer {
-  // The robot's subsystems and commands are defined here...
-  //private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
 
-  // Instantiate the shooter subsystem
-  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
+    private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
 
-  // Replace with CommandPS4Controller or CommandJoystick if needed
-  private final CommandXboxController m_driverController =
-      new CommandXboxController(OperatorConstants.kDriverControllerPort);
+    // Instantiate Intake subsystem
+    private final Intake m_intake = new Intake();
 
-  /** The container for the robot. Contains subsystems, OI devices, and commands. */
-  public RobotContainer() {
-    // Configure the trigger bindings
-    configureBindings();
-  }
+    private final CommandXboxController m_driverController =
+        new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
-  /**
-   * Use this method to define your trigger->command mappings.
-   */
-  private void configureBindings() {
+    public RobotContainer() {
+        configureBindings();
+    }
 
-    // Xbox buttons for shooter
-    
+    private void configureBindings() {
+        // --- Shooter bindings ---
+        m_driverController.x()
+            .whileTrue(Commands.run(() -> m_shooterSubsystem.setTargetRPM(2000.0), m_shooterSubsystem))
+            .onFalse(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
 
-    // X button → spin shooter to fixed 2950 RPM (open-loop)
-    m_driverController.x()
-        .whileTrue(Commands.run(() -> m_shooterSubsystem.setTargetRPM(2000.0), m_shooterSubsystem))
-        .onFalse(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
+        m_driverController.y()
+            .onTrue(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
 
-    // Y button → stop shooter immediately when pressed
-    m_driverController.y()
-        .onTrue(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
+        m_driverController.rightTrigger()
+            .whileTrue(m_shooterSubsystem.shooterCommand())
+            .onFalse(Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem));
 
-    // Right trigger: run feeder while held, stop when released
-   m_driverController.rightTrigger()
-    .whileTrue(
-        m_shooterSubsystem.shooterCommand()  // uses canShoot() internally
-    )
-    .onFalse(
-        Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem)
-    );
+        m_driverController.b()
+            .onTrue(Commands.run(() -> {
+                m_shooterSubsystem.stop();
+                m_shooterSubsystem.stopFeeder();
+            }, m_shooterSubsystem));
 
+        new Trigger(() -> m_driverController.getHID().getPOV() == 0)
+            .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(15.0), m_shooterSubsystem));
 
-    m_driverController.b()
-    .onTrue(Commands.run(() -> {
-        m_shooterSubsystem.stop();       // stop shooter
-        m_shooterSubsystem.stopFeeder(); // stop feeder
-    }, m_shooterSubsystem));
-      
-    
-    
-     new Trigger(() -> m_driverController.getHID().getPOV() == 0)
-    .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(15.0), m_shooterSubsystem));
+        m_driverController.povDown()
+            .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(10.0), m_shooterSubsystem));
 
-    m_driverController.povDown()
-        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(10.0), m_shooterSubsystem));
+        m_driverController.povLeft()
+            .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(7.5), m_shooterSubsystem));
 
-    m_driverController.povLeft()
-        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(7.5), m_shooterSubsystem));
+        m_driverController.povRight()
+            .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(12.5), m_shooterSubsystem));
 
-    m_driverController.povRight()
-        .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(12.5), m_shooterSubsystem));
+        // --- Intake binding ---
+       // Left trigger → run intake forward while held
+        m_driverController.leftTrigger()
+            .whileTrue(m_intake.intakeCommand());
+
+// Left bumper → run intake backward (eject) while held
+m_driverController.leftBumper()
+    .whileTrue(m_intake.ejectCommand());
+
+    }
 }
- 
- 
-  }
-
-  /**
-   * Use this to pass the autonomous command to the main {@link Robot} class.
-   *
-   * @return the command to run in autonomous
-   */
-  /* 
-  public Command getAutonomousCommand() {
-    // An example command will be run in autonomous
-    return Autos.exampleAuto(m_exampleSubsystem);
-  }
-  */
-

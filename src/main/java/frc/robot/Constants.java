@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import javax.print.DocFlavor.INPUT_STREAM;
+
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
  * constants. This class should not be used for any other purpose. All constants should be declared
@@ -31,14 +33,28 @@ public final class Constants {
         public static final int RIGHT_MOTOR_PORT = 1;
     }
 
-    public static class IntakeConstants {}
+    public static class IntakeConstants {
+        public static final int INTAKE_MOTOR_ID = 42;
+        public static final int STALL_LIMIT = 30;
+        public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
+        public static final int INTAKE_CURRENT_LIMIT = 30; // adjust as needed
+        public static final double INTAKE_SPEED = 0.5; //
+        public static final double REVERSE_SPEED = -0.5; // 
+        public static final double SLOW_INTAKE_SPEED = 0.4; //
+        public static final double INTAKE_CURRENT_SPIKE_THRESHOLD = 35.0; // amps
+        private static final double JAM_REVERSE_SPEED = -0.5;
+        private static final double JAM_REVERSE_TIME_SEC = 0.25;
+
+
+
+    }
 
     public static class ShooterConstants {
 
         public static final int STALL_LIMIT = 30;
         // CAN IDs
-        public static final int SHOOTER_MOTOR_ID = 1;
-        public static final int FEEDER_MOTOR_ID = 2;
+        public static final int SHOOTER_MOTOR_ID = 31;
+        public static final int FEEDER_MOTOR_ID = 32;
 
         // Motor speeds
         public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
@@ -50,20 +66,24 @@ public final class Constants {
          public static final int FEEDER_CURRENT_LIMIT = 30; // adjust as needed
          // PID / feedforward constants
          public static final double TARGET_RPM_10_FEET = 2950.0;
-         public static final double SHOOTER_KP = 0.0;       // proportional (starting value)
+         public static final double SHOOTER_KP = 1.0;       // proportional (starting value)
          public static final double SHOOTER_KI = 0.0;       // integral
          public static final double SHOOTER_KD = 0.0;       // derivative
          public static final double SHOOTER_KV = 0.12;      // feedforward
          public static final double RPM_TOLERANCE = 50.0; // within+50 rpm is ready
         
           // Distance to RPM mapping (distance in feet -> target RPM)
-          // You can adjust these RPMs based on shooter testing
+          // we can adjust these RPMs based on shooter testing
          public static final double[] DISTANCES_FEET = {5, 7.5, 12.5, 15, 17.5, 20};
          public static final double[] DISTANCE_RPM_MAP = {2500, 2700, 2950, 3100, 3200, 3300};
        
         }
          public static class SensorConstants {
         public static final int LIGHT_SENSOR_DIO_PORT = 0; // Add your DIO port here
+        public static final int BALL_SENSOR_DIO_PORT = 0; // Add your DIO port here
+        public static final boolean BALL_SENSOR_INVERTED = true;
+
+        
 
     }
 }
