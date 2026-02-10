@@ -31,9 +31,21 @@ public class RobotContainer {
         m_driverController.y()
             .onTrue(Commands.run(() -> m_shooterSubsystem.stop(), m_shooterSubsystem));
 
-        m_driverController.rightTrigger()
-            .whileTrue(m_shooterSubsystem.shooterCommand())
-            .onFalse(Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem));
+        // Right trigger → feed balls only if shooter is at target speed
+m_driverController.rightTrigger()
+    .whileTrue(
+        Commands.run(() -> {
+            if (m_shooterSubsystem.canShoot()) {
+                m_shooterSubsystem.startFeeder();
+            } else {
+                m_shooterSubsystem.stopFeeder();
+            }
+        }, m_shooterSubsystem)
+    )
+    .onFalse(
+        Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem)
+    );
+
 
         m_driverController.b()
             .onTrue(Commands.run(() -> {
