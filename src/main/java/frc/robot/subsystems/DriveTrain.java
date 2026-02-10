@@ -1,4 +1,6 @@
 package frc.robot.subsystems;
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.controller.LTVUnicycleController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
@@ -40,6 +42,9 @@ public class DriveTrain extends SubsystemBase{
 
     //private final Rotation2d gyroAngle = 
     private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance, Pose2d initialPoseMeters);
+
+    //trajectory follower change with pathplanner values
+    LTVUnicycleController controller = new LTVUnicycleController(VecBuilder.fill(0.0625, 0.125, 2.0), VecBuilder.fill(1.0, 2.0), 0.02, 9);
 
     public DriveTrain(){
         
@@ -121,7 +126,8 @@ public class DriveTrain extends SubsystemBase{
 
     //odometry class
     public static double DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance){
-        //gyroAngle = .getAnalogGyroAngle();
+        gyroAngle = gyro.getAnalogGyroAngle();
+        gyroAngle = gyro.getAngle();
     }
     //poseOdometry = new DifferentialDriveOdometry();
 
