@@ -27,8 +27,7 @@ public class Intake extends SubsystemBase {
     private boolean reversing = false; // Jam reverse active
     private double lastForwardSpeed = 0.0; // Last forward speed before jam
     private final Timer jamTimer = new Timer();
-    private static final double JAM_REVERSE_SPEED = -0.5; // Jam reverse speed
-    private static final double JAM_REVERSE_TIME_SEC = 0.25; // Jam reverse duration
+   
     
         // Intake states
         public enum IntakeState {

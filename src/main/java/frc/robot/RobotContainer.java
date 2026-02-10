@@ -70,9 +70,9 @@ m_driverController.rightTrigger()
         m_driverController.leftTrigger()
             .whileTrue(m_intake.intakeCommand());
 
-// Left bumper → run intake backward (eject) while held
-m_driverController.leftBumper()
-    .whileTrue(m_intake.ejectCommand());
+        // Left bumper → run intake backward (eject) while held
+        m_driverController.leftBumper()
+         .whileTrue(m_intake.ejectCommand());
 
     }
 }

@@ -42,9 +42,9 @@ public final class Constants {
         public static final double REVERSE_SPEED = -0.5; // 
         public static final double SLOW_INTAKE_SPEED = 0.4; //
         public static final double INTAKE_CURRENT_SPIKE_THRESHOLD = 35.0; // amps
-        private static final double JAM_REVERSE_SPEED = -0.5;
-        private static final double JAM_REVERSE_TIME_SEC = 0.25;
-         public static final double EJECT_SPEED = 0;
+        public static final double JAM_REVERSE_SPEED = -0.5;
+        public static final double JAM_REVERSE_TIME_SEC = 0.25;
+        public static final double EJECT_SPEED = 0;
 
 
 
