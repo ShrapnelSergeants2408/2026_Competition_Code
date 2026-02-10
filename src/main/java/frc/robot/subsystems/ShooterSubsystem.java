@@ -11,6 +11,8 @@ import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
 import com.ctre.phoenix6.controls.DutyCycleOut;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.compound.Diff_DutyCycleOut_Velocity;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -24,7 +26,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 public class ShooterSubsystem extends SubsystemBase {
-
     private final TalonFX shooterMotor;
     private final SparkMax feederMotor;
     private final DigitalInput lightSensor;
@@ -74,23 +75,25 @@ public class ShooterSubsystem extends SubsystemBase {
     }
 
     // --- Shooter control ---
-    public void spinAtSpeed(double percentOutput) {
-        shooterMotor.setControl(new DutyCycleOut(percentOutput));
+    public void spinAtSpeed(double rpm) {
+        shooterMotor.setControl(new VelocityVoltage(rpm/60));
     }
 
     public void stop() {
-        shooterMotor.setControl(new DutyCycleOut(0.0));
+        shooterMotor.setControl(new VelocityVoltage(0.0));
     }
 
+    private double targetRpm = 0;
+    public void enableShooter(Boolean enable){
+        lastTargetRPM = enable? targetRpm : 0;
+        spinAtSpeed(lastTargetRPM);
+    }
     public void setTargetRPM(double rpm) {
-        lastTargetRPM = rpm;
-        double percentOutput = rpm / TARGET_RPM_10_FEET;
-        percentOutput = Math.max(0.0, Math.min(percentOutput, 1.0));
-        spinAtSpeed(percentOutput);
+        targetRpm = rpm;
     }
 
     public double getCurrentRPM() {
-        return lastTargetRPM;
+        return shooterMotor.getVelocity().getValueAsDouble()*60;
     }
 
     public boolean isAtTargetSpeed(double tolerance) {
