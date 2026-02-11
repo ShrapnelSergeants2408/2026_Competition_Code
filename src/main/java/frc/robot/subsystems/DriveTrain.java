@@ -1,19 +1,26 @@
 package frc.robot.subsystems;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.LTVUnicycleController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.Odometry;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Result;
 import com.studica.frc.AHRS;
+
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 
 import static frc.robot.Constants.DriveTrain.*;
@@ -21,9 +28,15 @@ import static frc.robot.Constants.DriveTrain.*;
 import java.util.List;
 import java.util.function.DoubleSupplier;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import com.pathplanner.lib.controllers.PPLTVController;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+
+
 public class DriveTrain extends SubsystemBase{
     public enum DriveMode {
         ARCADE,
@@ -34,21 +47,80 @@ public class DriveTrain extends SubsystemBase{
     private final SparkMax leftMotor = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
     private final SparkMax rightMotor = new SparkMax(RIGHT_MOTOR_PORT, MotorType.kBrushless);
 
-    private final DifferentialDrive driver = new DifferentialDrive(leftMotor, rightMotor);
-
-    //reset pose test CONFUSION
+    
+    //reset pose test
     private final RelativeEncoder leftEncoder = leftMotor.getEncoder();
     private final RelativeEncoder rightEncoder = rightMotor.getEncoder();
 
-    //private final Rotation2d gyroAngle = 
+    //Gyro
+    AHRS gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
+
+    private final DifferentialDrive driver = new DifferentialDrive(leftMotor, rightMotor);
+    private final DifferentialDriveKinematics kinematics = new DifferentialDriveKinematics(0.55245); //make constant 21 3/4
+    private final DifferentialDriveOdometry odometry = new DifferentialDriveOdometry(
+                gyro.getRotation2d(), 
+                leftEncoder.getPosition(), 
+                rightEncoder.getPosition(), 
+                new Pose2d(5.0, 13.5, new Rotation2d()) //sample starting position
+    );
+
+    //configuration for autobuilder for pathplanner
+    try {
+        RobotConfig config = RobotConfig.fromGUISettings();
+
+        //configure autobuilder
+        AutoBuilder.configure(
+            this::getPose,
+            this::resetPose,
+            this::getSpeeds,
+            this::driveRobotRelative,
+            new PPLTVController(
+                0.02 
+            ),
+            config,
+            () -> {
+                var alliance = DriverStation.getAlliance();
+                if (alliance.isPresent()){
+                    return alliance.get() == DriverStation.Alliance.Red;
+                }
+                return false;
+            },
+            this
+        );
+    } catch (Exception e){
+        DriverStation.reportError("failed to load pathplanner", e.getStackTrace());
+    }
+
+    //set up custom logging to add the current path to a field 2d widget
+    PathPlannerLogging.setLogActivePathCallBack((poses) -> field.getObject("path").setPoses(poses));
+
+
+
+    //april tag
+    private final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
+
+  
+    private Field2d field = new Field2d();
+
+    Rotation2d gyroAngle = new Rotation2d();
+
+    //
     private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance, Pose2d initialPoseMeters);
 
     //trajectory follower change with pathplanner values
+    /*
+     * The code example below initializes the LTV Unicycle Controller with qelems of 0.0625 m in X, 0.125 m in Y, and 2 radians in heading; 
+     * relems of 1 m/s of linear velocity, and 2 rad/sec angular velocity; dt of 20 ms; and maxVelocity of 9 m/s.
+
+
+     */
     LTVUnicycleController controller = new LTVUnicycleController(VecBuilder.fill(0.0625, 0.125, 2.0), VecBuilder.fill(1.0, 2.0), 0.02, 9);
 
     public DriveTrain(){
         
         rightMotor.setInverted(true); // common on FRC Robots
+
+
     }
 
     @Override
@@ -101,11 +173,29 @@ public class DriveTrain extends SubsystemBase{
     }
 
     //get pose test
-
     public Pose2d getPose(){
-        Pose2d pose = new Pose2d(0, 0, new Rotation2d(0.0));
+        //Pose2d pose = new Pose2d(0, 0, new Rotation2d(0.0));
 
-        return pose;
+        return odometry.getPoseMeters();
+    }
+
+    public void resetPose(Pose2d pose){
+        System.out.println(pose);
+        odometry.resetPosition(gyro.getRotation2d(), getPositions(), pose);
+    }
+    
+    public ChassisSpeeds getSpeeds(){
+        return kinematics.toChassisSpeeds(getSpeeds());
+    }
+
+    public void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds){
+        driveRobotRelative(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose.getRotation2d()));
+    }
+
+    public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds){
+        ChassisSpeeds targetSpeeds = ChassisSpeeds.discretize(robotRelativeSpeeds, 0.02);
+
+        //????
     }
 
     //reset pose test
@@ -113,8 +203,7 @@ public class DriveTrain extends SubsystemBase{
         handle = 0;
     }
 
-    //get heading
-    private final AHRS gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
+
 
     public Rotation2d getHeading() {
         return Rotation2d.fromDegrees(-gyro.getAngle()); // Inverted for CCW positive
@@ -126,8 +215,8 @@ public class DriveTrain extends SubsystemBase{
 
     //odometry class
     public static double DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance){
-        gyroAngle = gyro.getAnalogGyroAngle();
-        gyroAngle = gyro.getAngle();
+        //gyroAngle = gyro.getAnalogGyroAngle();
+        //gyroAngle = gyro.getAngle();
     }
     //poseOdometry = new DifferentialDriveOdometry();
 
