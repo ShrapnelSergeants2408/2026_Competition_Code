@@ -105,7 +105,7 @@ public class DriveTrain extends SubsystemBase{
 
     public DriveTrain(){ //add vision subsystem here later
         
-        rightMotor.setInverted(true); // common on FRC Robots
+        rightMotorLead.setInverted(true); // common on FRC Robots
 
 
     }
@@ -163,7 +163,7 @@ public class DriveTrain extends SubsystemBase{
     }
 
     private void setOrientationMode(OrientationMode mode){
-        
+
     }
 
     // Testing
@@ -194,7 +194,7 @@ public class DriveTrain extends SubsystemBase{
 
     private void resetPose(Pose2d pose){
         System.out.println(pose);
-        odometry.resetPosition(gyro.getRotation2d(), getPositions(), pose);
+        odometry.resetPosition(gyro.getRotation2d(), getPosition(), pose);
     }
 
     //reset pose test
