@@ -145,6 +145,20 @@ public class DriveTrain extends SubsystemBase{
         return List.of(Result.pass("dummy test"));
     }
 
+    //commands
+    private Command teleopArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot){
+
+    }
+
+    private Command teleopTankCommand(DoubleSupplier left, DoubleSupplier right){
+
+    }
+
+    private Command fieldOrientedArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot){
+        
+    }
+
+
     //Odometry
     private Pose2d getPose(){
         //Pose2d pose = new Pose2d(0, 0, new Rotation2d(0.0));
@@ -188,8 +202,6 @@ public class DriveTrain extends SubsystemBase{
         //gyroAngle = gyro.getAngle();
     }
     //poseOdometry = new DifferentialDriveOdometry();
-
-
 
     //chassis
     private ChassisSpeeds getRobotRelativeSpeeds(){
