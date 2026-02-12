@@ -18,8 +18,8 @@ public class DriveTrain extends SubsystemBase{
     }
     private DriveMode driveMode = DriveMode.ARCADE;
 
-    private final MotorController leftMotor = new PWMSparkMax(LEFT_MOTOR_PORT);
-    private final MotorController rightMotor = new PWMSparkMax(RIGHT_MOTOR_PORT);
+    private final MotorController leftMotor = new PWMSparkMax(LEFT_MOTOR_ID_LEAD);
+    private final MotorController rightMotor = new PWMSparkMax(RIGHT_MOTOR_ID_LEAD);
 
     private final DifferentialDrive driver = new DifferentialDrive(leftMotor, rightMotor);
 
