@@ -4,11 +4,15 @@
 
 package frc.robot;
 
-import frc.robot.Constants.OperatorConstants;
-//import frc.robot.subsystems.ExampleSubsystem;
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.VisionConstants;
+import frc.robot.subsystems.VisionSubsystem;
+//import frc.robot.subsystems.ExampleSubsystem;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -20,12 +24,28 @@ public class RobotContainer {
   // The robot's subsystems and commands are defined here...
   //private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
 
+  // Vision subsystem
+  private final VisionSubsystem vision = new VisionSubsystem();
+
+  // Driver camera (USB webcam)
+  private final UsbCamera driverCamera;
+
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
+    // Initialize driver camera (USB webcam on front)
+    driverCamera = CameraServer.startAutomaticCapture(
+        VisionConstants.DRIVER_CAMERA_NAME,
+        0  // USB port 0 (TODO: adjust if needed for team 2408)
+    );
+
+    // Configure resolution and FPS for low latency
+    driverCamera.setResolution(320, 240);  // Low res for speed
+    driverCamera.setFPS(30);
+
     // Configure the trigger bindings
     configureBindings();
   }
