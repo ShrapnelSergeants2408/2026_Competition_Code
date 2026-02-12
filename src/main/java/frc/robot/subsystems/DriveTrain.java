@@ -8,6 +8,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
+import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.math.kinematics.Odometry;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -26,12 +27,14 @@ import edu.wpi.first.wpilibj.SPI;
 import static frc.robot.Constants.DriveTrain.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.DoubleSupplier;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.controllers.PPLTVController;
+import com.pathplanner.lib.util.PathPlannerLogging;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -63,36 +66,6 @@ public class DriveTrain extends SubsystemBase{
                 rightEncoder.getPosition(), 
                 new Pose2d(5.0, 13.5, new Rotation2d()) //sample starting position
     );
-
-    //configuration for autobuilder for pathplanner
-    try {
-        RobotConfig config = RobotConfig.fromGUISettings();
-
-        //configure autobuilder
-        AutoBuilder.configure(
-            this::getPose,
-            this::resetPose,
-            this::getSpeeds,
-            this::driveRobotRelative,
-            new PPLTVController(
-                0.02 
-            ),
-            config,
-            () -> {
-                var alliance = DriverStation.getAlliance();
-                if (alliance.isPresent()){
-                    return alliance.get() == DriverStation.Alliance.Red;
-                }
-                return false;
-            },
-            this
-        );
-    } catch (Exception e){
-        DriverStation.reportError("failed to load pathplanner", e.getStackTrace());
-    }
-
-    //set up custom logging to add the current path to a field 2d widget
-    PathPlannerLogging.setLogActivePathCallBack((poses) -> field.getObject("path").setPoses(poses));
 
 
 
@@ -172,56 +145,134 @@ public class DriveTrain extends SubsystemBase{
         return List.of(Result.pass("dummy test"));
     }
 
-    //get pose test
-    public Pose2d getPose(){
+    //Odometry
+    private Pose2d getPose(){
         //Pose2d pose = new Pose2d(0, 0, new Rotation2d(0.0));
 
         return odometry.getPoseMeters();
     }
 
-    public void resetPose(Pose2d pose){
+    private void resetPose(Pose2d pose){
         System.out.println(pose);
         odometry.resetPosition(gyro.getRotation2d(), getPositions(), pose);
     }
-    
-    public ChassisSpeeds getSpeeds(){
-        return kinematics.toChassisSpeeds(getSpeeds());
-    }
-
-    public void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds){
-        driveRobotRelative(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose.getRotation2d()));
-    }
-
-    public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds){
-        ChassisSpeeds targetSpeeds = ChassisSpeeds.discretize(robotRelativeSpeeds, 0.02);
-
-        //????
-    }
 
     //reset pose test
-    public static double getAnalogGyroAngle(int handle){
+    private static double getAnalogGyroAngle(int handle){
         handle = 0;
     }
 
 
-
-    public Rotation2d getHeading() {
+    private Rotation2d getHeading() {
         return Rotation2d.fromDegrees(-gyro.getAngle()); // Inverted for CCW positive
     }
 
-    public void resetGyro() {
+    private void resetGyro() {
         gyro.reset();
     }
 
-    //odometry class
-    public static double DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance){
+    private double getLeftDistanceMeters(){
+        return leftEncoder.getPosition();
+    }
+
+   private double getRightDistanceMeters(){
+        return rightEncoder.getPosition();
+    }
+
+    private DifferentialDriveWheelSpeeds getWheelSpeeds(){
+        //find velocity of both encoders
+    }
+
+    private static double DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance){
         //gyroAngle = gyro.getAnalogGyroAngle();
         //gyroAngle = gyro.getAngle();
     }
     //poseOdometry = new DifferentialDriveOdometry();
 
-    public void resetPose(){
 
-    } 
+
+    //chassis
+    private ChassisSpeeds getRobotRelativeSpeeds(){
+        return getSpeeds(); //idk are they the same thing??
+    }
+
+    private ChassisSpeeds getSpeeds(){
+        return kinematics.toChassisSpeeds(getSpeeds());
+    }
+
+    private void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds){
+        driveRobotRelative(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose.getRotation2d()));
+    }
+
+    private void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds){
+        ChassisSpeeds targetSpeeds = ChassisSpeeds.discretize(robotRelativeSpeeds, 0.02);
+
+        //????
+    }
+
+    //pathplanner
+    //set up custom logging to add the current path to a field 2d widget
+    private void addPath(){
+        PathPlannerLogging.setLogActivePathCallback((poses) -> field.getObject("path").setPoses(poses));
+    
+
+    //configuration for autobuilder for pathplanner
+    try {
+        RobotConfig config = RobotConfig.fromGUISettings();
+
+        //configure autobuilder
+        AutoBuilder.configure(
+            this::getPose,
+            this::resetPose,
+            this::getSpeeds,
+            this::driveRobotRelative,
+            new PPLTVController(
+                0.02 
+            ),
+            config,
+            () -> {
+                var alliance = DriverStation.getAlliance();
+                if (alliance.isPresent()){
+                    return alliance.get() == DriverStation.Alliance.Red;
+                }
+                return false;
+            },
+            this
+        );
+    } catch (Exception e){
+        DriverStation.reportError("failed to load pathplanner", e.getStackTrace());
+    }
+}
+
+    private Command getAutoCommand (String autoName){
+         //add return
+    }
+
+    private DifferentialDriveWheelSpeeds setSpeedsVoltage(DifferentialDriveWheelSpeeds speeds){
+         //add return
+    }
+
+    private DifferentialDriveWheelSpeeds setSpeedsOpenLoop(DifferentialDriveWheelSpeeds speeds){
+        //add return
+    }
+
+
+    //vision
+    private void updateVisionMeasurements(){
+        
+    }
+
+    private Optional<Pose2d> getVisionSeededPose(){
+        
+    }
+
+    private Boolean setVisionEnabled(Boolean enabled){
+        return enabled;
+    }
+
+    //telemetry
+    private void updateTelemetry(){
+    }
+
 }
 
