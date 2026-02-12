@@ -274,5 +274,10 @@ public class DriveTrain extends SubsystemBase{
     private void updateTelemetry(){
     }
 
+    //lifecycle
+    private void configureMotors(){
+        
+    }
+
 }
 
