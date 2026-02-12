@@ -27,6 +27,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 
 import static frc.robot.Constants.DriveTrain.*;
+import static frc.robot.Constants.Auto.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,13 +44,13 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 
 
 public class DriveTrain extends SubsystemBase{
+
     //enums
     public enum DriveMode {
         ARCADE,
         TANK,
     }
     public enum OrientationMode{ ROBOT_ORIENTED, FIELD_ORIENTED}
-    private DriveMode driveMode = DriveMode.ARCADE;
 
     //hardware
     private final SparkMax leftMotorLead = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
@@ -73,18 +74,26 @@ public class DriveTrain extends SubsystemBase{
                 rightEncoder.getPosition(), 
                 new Pose2d(5.0, 13.5, new Rotation2d()) //sample starting position
     );
-    private final DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(kinematics, getHeading(), leftEncoder.getPosition(), rightEncoder.getPosition(), getPose());
+
+    private final DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(kinematics, getHeading(), leftEncoder.getPosition()*WHEEL_CIRCUMFERENCE_METERS, rightEncoder.getPosition()*WHEEL_CIRCUMFERENCE_METERS, getPose());
+    
     private Field2d field = new Field2d();
 
-    //april tag
+    //pathplanner
+    RobotConfig robotConfig;
+    LTVUnicycleController controller = new LTVUnicycleController(VecBuilder.fill(0.0625, 0.125, 2.0), VecBuilder.fill(1.0, 2.0), 0.02, 9);
+    PPLTVController ltvController = new PPLTVController(0.02);
     private final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
 
-  
-    //Rotation2d gyroAngle = new Rotation2d();
+    //STATE
+    private DriveMode driveMode = DriveMode.ARCADE;
+    private OrientationMode orientationMode = OrientationMode.ROBOT_ORIENTED;
+    private Boolean visionEnabled = false;
 
+    //DEPENDENCIES DONT DELETE
+    //private VisionSubsystem visionSubsystem = null;
 
-    //
-    private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance, Pose2d initialPoseMeters);
+    private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(gyroAngle, leftDistance, rightDistance, initialPoseMeters);
 
     //trajectory follower change with pathplanner values
     /*
@@ -93,9 +102,8 @@ public class DriveTrain extends SubsystemBase{
 
 
      */
-    LTVUnicycleController controller = new LTVUnicycleController(VecBuilder.fill(0.0625, 0.125, 2.0), VecBuilder.fill(1.0, 2.0), 0.02, 9);
 
-    public DriveTrain(){
+    public DriveTrain(){ //add vision subsystem here later
         
         rightMotor.setInverted(true); // common on FRC Robots
 
@@ -144,6 +152,18 @@ public class DriveTrain extends SubsystemBase{
     private void tankDrive(double x, double y){
         // leftSpeed = x ; rightSpeed = y
         this.driver.tankDrive(-x,-y);
+    }
+
+    private void stop(){
+
+    }
+
+    private double applyDeadband(double value, double deadband){
+
+    }
+
+    private void setOrientationMode(OrientationMode mode){
+        
     }
 
     // Testing
@@ -236,7 +256,7 @@ public class DriveTrain extends SubsystemBase{
 
     //configuration for autobuilder for pathplanner
     try {
-        RobotConfig config = RobotConfig.fromGUISettings();
+        robotConfig = RobotConfig.fromGUISettings();
 
         //configure autobuilder
         AutoBuilder.configure(
@@ -244,10 +264,8 @@ public class DriveTrain extends SubsystemBase{
             this::resetPose,
             this::getSpeeds,
             this::driveRobotRelative,
-            new PPLTVController(
-                0.02 
-            ),
-            config,
+            ltvController,
+            robotConfig,
             () -> {
                 var alliance = DriverStation.getAlliance();
                 if (alliance.isPresent()){
