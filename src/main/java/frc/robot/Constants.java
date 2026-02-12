@@ -106,5 +106,9 @@ public final class Constants {
         // Known field element poses (2026 field - update based on actual game)
         public static final Pose2d HUB_POSE = new Pose2d(8.27, 4.1, new Rotation2d()); // TODO: Update with actual 2026 game positions
         public static final Pose2d HP_STATION_POSE = new Pose2d(1.5, 7.5, Rotation2d.fromDegrees(180)); // TODO: Update with actual 2026 game positions
+        public static final Pose2d TRENCH_POSE = new Pose2d(2.5, 2.0, Rotation2d.fromDegrees(0)); // TODO: Update with actual 2026 game positions
+        public static final Pose2d DEPOT_POSE = new Pose2d(14.0, 2.0, Rotation2d.fromDegrees(180)); // TODO: Update with actual 2026 game positions
+        public static final Pose2d OUTPOST_POSE = new Pose2d(8.27, 0.5, Rotation2d.fromDegrees(90)); // TODO: Update with actual 2026 game positions
+        public static final Pose2d TOWER_POSE = new Pose2d(8.27, 7.5, Rotation2d.fromDegrees(270)); // TODO: Update with actual 2026 game positions
     }
 }

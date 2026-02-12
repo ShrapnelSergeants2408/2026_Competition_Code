@@ -16,7 +16,7 @@ public class Shooter extends SubsystemBase {
     private final SparkMax shooterMotor;
     private final SparkMax feederMotor;
 
-    public Shooter(int nominalVoltage) {
+    public Shooter(double nominalVoltage) {
         shooterMotor = new SparkMax(SHOOTER_MOTOR_ID, MotorType.kBrushless);
         feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
 

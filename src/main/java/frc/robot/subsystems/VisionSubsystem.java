@@ -67,6 +67,7 @@ public class VisionSubsystem extends SubsystemBase {
      *
      * @return Optional VisionMeasurement containing the best pose estimate, or empty if none available
      */
+
     public Optional<VisionMeasurement> getBestVisionMeasurement() {
         Optional<VisionMeasurement> frontMeasurement =
             processCameraResult(frontPoseEstimator, frontCamera, "Front");
@@ -102,6 +103,7 @@ public class VisionSubsystem extends SubsystemBase {
     /**
      * Process a single camera's result and create a VisionMeasurement if valid.
      */
+
     private Optional<VisionMeasurement> processCameraResult(
         PhotonPoseEstimator poseEstimator,
         PhotonCamera camera,
@@ -151,6 +153,7 @@ public class VisionSubsystem extends SubsystemBase {
     /**
      * Determine if a measurement should be used based on quality criteria.
      */
+
     private boolean shouldUseMeasurement(
         EstimatedRobotPose pose,
         PhotonPipelineResult result
@@ -224,6 +227,7 @@ public class VisionSubsystem extends SubsystemBase {
     /**
      * Get the best target from all cameras (highest confidence/lowest ambiguity).
      */
+    
     public Optional<PhotonTrackedTarget> getBestTarget() {
         var frontResult = frontCamera.getLatestResult();
         var rearResult = rearCamera.getLatestResult();
@@ -341,6 +345,62 @@ public class VisionSubsystem extends SubsystemBase {
     }
 
     /**
+     * Get distance to trench.
+     */
+    public Optional<Double> getDistanceToTrench() {
+        return getDistanceToPose(VisionConstants.TRENCH_POSE);
+    }
+
+    /**
+     * Check if aligned with trench.
+     */
+    public boolean isAlignedWithTrench(double toleranceDeg) {
+        return isAlignedWithTarget(VisionConstants.TRENCH_POSE, toleranceDeg);
+    }
+
+    /**
+     * Get distance to depot.
+     */
+    public Optional<Double> getDistanceToDepot() {
+        return getDistanceToPose(VisionConstants.DEPOT_POSE);
+    }
+
+    /**
+     * Check if aligned with depot.
+     */
+    public boolean isAlignedWithDepot(double toleranceDeg) {
+        return isAlignedWithTarget(VisionConstants.DEPOT_POSE, toleranceDeg);
+    }
+
+    /**
+     * Get distance to outpost.
+     */
+    public Optional<Double> getDistanceToOutpost() {
+        return getDistanceToPose(VisionConstants.OUTPOST_POSE);
+    }
+
+    /**
+     * Check if aligned with outpost.
+     */
+    public boolean isAlignedWithOutpost(double toleranceDeg) {
+        return isAlignedWithTarget(VisionConstants.OUTPOST_POSE, toleranceDeg);
+    }
+
+    /**
+     * Get distance to tower.
+     */
+    public Optional<Double> getDistanceToTower() {
+        return getDistanceToPose(VisionConstants.TOWER_POSE);
+    }
+
+    /**
+     * Check if aligned with tower.
+     */
+    public boolean isAlignedWithTower(double toleranceDeg) {
+        return isAlignedWithTarget(VisionConstants.TOWER_POSE, toleranceDeg);
+    }
+
+    /**
      * Update telemetry to SmartDashboard.
      */
     private void updateTelemetry() {
@@ -383,6 +443,30 @@ public class VisionSubsystem extends SubsystemBase {
             SmartDashboard.putNumber("Vision/HPStationDistance", distance)
         );
         SmartDashboard.putBoolean("Vision/HPStationAligned", isAlignedWithHPStation(2.0));
+
+        // Trench distance and alignment
+        getDistanceToTrench().ifPresent(distance ->
+            SmartDashboard.putNumber("Vision/TrenchDistance", distance)
+        );
+        SmartDashboard.putBoolean("Vision/TrenchAligned", isAlignedWithTrench(2.0));
+
+        // Depot distance and alignment
+        getDistanceToDepot().ifPresent(distance ->
+            SmartDashboard.putNumber("Vision/DepotDistance", distance)
+        );
+        SmartDashboard.putBoolean("Vision/DepotAligned", isAlignedWithDepot(2.0));
+
+        // Outpost distance and alignment
+        getDistanceToOutpost().ifPresent(distance ->
+            SmartDashboard.putNumber("Vision/OutpostDistance", distance)
+        );
+        SmartDashboard.putBoolean("Vision/OutpostAligned", isAlignedWithOutpost(2.0));
+
+        // Tower distance and alignment
+        getDistanceToTower().ifPresent(distance ->
+            SmartDashboard.putNumber("Vision/TowerDistance", distance)
+        );
+        SmartDashboard.putBoolean("Vision/TowerAligned", isAlignedWithTower(2.0));
     }
 
     /**
