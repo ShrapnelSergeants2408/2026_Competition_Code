@@ -3,6 +3,8 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.LTVUnicycleController;
+import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
+import edu.wpi.first.math.estimator.PoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -41,24 +43,29 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 
 
 public class DriveTrain extends SubsystemBase{
+    //enums
     public enum DriveMode {
         ARCADE,
         TANK,
     }
+    public enum OrientationMode{ ROBOT_ORIENTED, FIELD_ORIENTED}
     private DriveMode driveMode = DriveMode.ARCADE;
 
-    private final SparkMax leftMotor = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
-    private final SparkMax rightMotor = new SparkMax(RIGHT_MOTOR_PORT, MotorType.kBrushless);
+    //hardware
+    private final SparkMax leftMotorLead = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
+    private final SparkMax rightMotorLead = new SparkMax(RIGHT_MOTOR_PORT, MotorType.kBrushless);
 
-    
-    //reset pose test
-    private final RelativeEncoder leftEncoder = leftMotor.getEncoder();
-    private final RelativeEncoder rightEncoder = rightMotor.getEncoder();
+    private final SparkMax leftMotorFollow = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
+    private final SparkMax rightMotorFollow = new SparkMax(RIGHT_MOTOR_PORT, MotorType.kBrushless);
 
-    //Gyro
+    private final RelativeEncoder leftEncoder = leftMotorLead.getEncoder();
+    private final RelativeEncoder rightEncoder = rightMotorLead.getEncoder();
+
     AHRS gyro = new AHRS(AHRS.NavXComType.kMXP_SPI);
 
-    private final DifferentialDrive driver = new DifferentialDrive(leftMotor, rightMotor);
+    private final DifferentialDrive driver = new DifferentialDrive(leftMotorLead, rightMotorLead);
+
+    //math
     private final DifferentialDriveKinematics kinematics = new DifferentialDriveKinematics(0.55245); //make constant 21 3/4
     private final DifferentialDriveOdometry odometry = new DifferentialDriveOdometry(
                 gyro.getRotation2d(), 
@@ -66,16 +73,15 @@ public class DriveTrain extends SubsystemBase{
                 rightEncoder.getPosition(), 
                 new Pose2d(5.0, 13.5, new Rotation2d()) //sample starting position
     );
-
-
+    private final DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(kinematics, getHeading(), leftEncoder.getPosition(), rightEncoder.getPosition(), getPose());
+    private Field2d field = new Field2d();
 
     //april tag
     private final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
 
   
-    private Field2d field = new Field2d();
+    //Rotation2d gyroAngle = new Rotation2d();
 
-    Rotation2d gyroAngle = new Rotation2d();
 
     //
     private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(Rotation2d gyroAngle, Distance leftDistance, Distance rightDistance, Pose2d initialPoseMeters);
@@ -155,7 +161,7 @@ public class DriveTrain extends SubsystemBase{
     }
 
     private Command fieldOrientedArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot){
-        
+
     }
 
 

@@ -3,6 +3,9 @@
 // the WPILib BSD license file in the root directory of this project.
 
 package frc.robot;
+
+import com.ctre.phoenix6.CANBus;
+
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
  * constants. This class should not be used for any other purpose. All constants should be declared
@@ -36,6 +39,14 @@ public final class Constants {
     
     public final static int positionEncoder = 11;
 
+    //CANID
+    public final static int LEFT_LEAD_CANID = 20;
+    public final static int RIGHT_LEAD_CANID = 22;
+
+    public final static int LEFT_FOLLOW_CANID = 21;
+    public final static int RIGHT_FOLLOW_CANID = 23;
+
+
   }
 
   public static class ShooterSupplier {
@@ -43,6 +54,12 @@ public final class Constants {
   }
 
   public static class Shooter {
+
+  }
+
+  public static class Auto {
+    public final static double WHEEL_DIAMETER_METERS = 0.1524; 
+    public final static double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS*Math.PI; 
 
   }
 
