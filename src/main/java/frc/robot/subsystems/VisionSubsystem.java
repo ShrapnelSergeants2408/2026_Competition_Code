@@ -38,7 +38,17 @@ public class VisionSubsystem extends SubsystemBase {
     // AprilTag field layout
     private final AprilTagFieldLayout fieldLayout;
 
+    // Class fields
+    private double lastFrontTimestamp = -1.0;
+    private double lastRearTimestamp = -1.0;
+    private long lastFrontUpdateMs = 0;
+    private long lastRearUpdateMs = 0;
+    private static final long CAMERA_STALE_TIMEOUT_MS = 500;
+
     public VisionSubsystem() {
+
+
+
         // Load AprilTag field layout
         fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
 
@@ -70,9 +80,9 @@ public class VisionSubsystem extends SubsystemBase {
 
     public Optional<VisionMeasurement> getBestVisionMeasurement() {
         Optional<VisionMeasurement> frontMeasurement =
-            processCameraResult(frontPoseEstimator, frontCamera, "Front");
+            processCameraResult(frontPoseEstimator, frontCamera, VisionConstants.FRONT_CAMERA_NAME);
         Optional<VisionMeasurement> rearMeasurement =
-            processCameraResult(rearPoseEstimator, rearCamera, "Rear");
+            processCameraResult(rearPoseEstimator, rearCamera, VisionConstants.REAR_CAMERA_NAME);
 
         // If both cameras have measurements, choose the best one
         if (frontMeasurement.isPresent() && rearMeasurement.isPresent()) {
@@ -110,6 +120,8 @@ public class VisionSubsystem extends SubsystemBase {
         String cameraName
     ) {
         var result = camera.getLatestResult();
+        updateCameraFreshness(camera, result);
+
 
         if (!result.hasTargets()) {
             return Optional.empty();
@@ -136,7 +148,7 @@ public class VisionSubsystem extends SubsystemBase {
         );
 
         // Count tags used
-        int numTags = result.getTargets().size();
+        int numTags = pose.targetsUsed.size();
 
         // Calculate average distance
         double avgDistance = calculateAverageTagDistance(result.getTargets(), pose.estimatedPose.toPose2d());
@@ -151,6 +163,27 @@ public class VisionSubsystem extends SubsystemBase {
     }
 
     /**
+     * Track camera frame freshness based on result timestamp
+     * @param camera
+     * @param result
+     * @return
+     */
+    private void updateCameraFreshness(PhotonCamera camera, PhotonPipelineResult result) {
+        double timestampSeconds = result.getTimestampSeconds();
+        long nowMs = System.currentTimeMillis();
+
+        if (camera == frontCamera && timestampSeconds > lastFrontTimestamp) {
+            lastFrontTimestamp = timestampSeconds;
+            lastFrontUpdateMs = nowMs;
+        } else if (camera == rearCamera && timestampSeconds > lastRearTimestamp) {
+            lastRearTimestamp = timestampSeconds;
+            lastRearUpdateMs = nowMs;
+        }
+
+    }
+
+
+    /**
      * Determine if a measurement should be used based on quality criteria.
      */
 
@@ -160,7 +193,11 @@ public class VisionSubsystem extends SubsystemBase {
     ) {
         // Check if pose is within field boundaries (assuming standard FRC field ~16.5m x 8.2m)
         var pose2d = pose.estimatedPose.toPose2d();
-        if (pose2d.getX() < 0 || pose2d.getX() > 16.5 || pose2d.getY() < 0 || pose2d.getY() > 8.2) {
+
+        double fieldLength = fieldLayout.getFieldLength();
+        double fieldWidth = fieldLayout.getFieldWidth();
+
+        if (pose2d.getX() < 0 || pose2d.getX() > fieldLength || pose2d.getY() < 0 || pose2d.getY() > fieldWidth) {
             return false;
         }
 
@@ -213,15 +250,24 @@ public class VisionSubsystem extends SubsystemBase {
         }
 
         double totalDistance = 0.0;
+        int validTagCount = 0;
+
         for (var target : targets) {
             var tagPose = fieldLayout.getTagPose(target.getFiducialId());
             if (tagPose.isPresent()) {
                 totalDistance += robotPose.getTranslation()
                     .getDistance(tagPose.get().toPose2d().getTranslation());
+                validTagCount++;
             }
         }
 
-        return totalDistance / targets.size();
+        //If no valid tag IDs were in the layout, treat as invalid/very poor measurement 
+        if (validTagCount == 0){
+            return Double.POSITIVE_INFINITY;
+        }
+
+
+        return totalDistance / validTagCount;
     }
 
     /**
@@ -413,8 +459,9 @@ public class VisionSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Vision/NumTagsVisible", visibleTags.size());
         SmartDashboard.putString("Vision/VisibleTags", visibleTags.toString());
 
-        // Best pose estimate
-        var bestMeasurement = getBestVisionMeasurement();
+        // Cache best pose estimate once for this cycle
+        Optional<VisionMeasurement> bestMeasurement = getBestVisionMeasurement();
+
         if (bestMeasurement.isPresent()) {
             var measurement = bestMeasurement.get();
             var pose = measurement.estimatedPose();
@@ -433,52 +480,88 @@ public class VisionSubsystem extends SubsystemBase {
         }
 
         // Hub distance and alignment
-        getDistanceToHub().ifPresent(distance ->
-            SmartDashboard.putNumber("Vision/HubDistance", distance)
-        );
-        SmartDashboard.putBoolean("Vision/HubAligned", isAlignedWithHub(2.0));
+        getDistanceToPose(VisionConstants.HUB_POSE, bestMeasurement)
+            .ifPresent(distance -> SmartDashboard.putNumber("Vision/HubDistance", distance)
+            );
+        SmartDashboard.putBoolean("Vision/HubAligned", 
+            isAlignedWithTarget(VisionConstants.HUB_POSE, 2.0, bestMeasurement)
+            );
+
 
         // HP Station distance and alignment
-        getDistanceToHPStation().ifPresent(distance ->
-            SmartDashboard.putNumber("Vision/HPStationDistance", distance)
-        );
-        SmartDashboard.putBoolean("Vision/HPStationAligned", isAlignedWithHPStation(2.0));
+        getDistanceToPose(VisionConstants.HP_STATION_POSE, bestMeasurement)
+            .ifPresent(distance -> SmartDashboard.putNumber("Vision/HPStationDistance", distance)
+            );
+        SmartDashboard.putBoolean("Vision/HPStationAligned", 
+            isAlignedWithTarget(VisionConstants.HP_STATION_POSE, 2.0, bestMeasurement)
+            );
 
         // Trench distance and alignment
-        getDistanceToTrench().ifPresent(distance ->
-            SmartDashboard.putNumber("Vision/TrenchDistance", distance)
-        );
-        SmartDashboard.putBoolean("Vision/TrenchAligned", isAlignedWithTrench(2.0));
+        getDistanceToPose(VisionConstants.TRENCH_POSE, bestMeasurement)
+            .ifPresent(distance -> SmartDashboard.putNumber("Vision/TrenchDistance", distance)
+            );
+        SmartDashboard.putBoolean("Vision/TrenchAligned", 
+            isAlignedWithTarget(VisionConstants.TRENCH_POSE, 2.0, bestMeasurement)
+            );
+
 
         // Depot distance and alignment
-        getDistanceToDepot().ifPresent(distance ->
-            SmartDashboard.putNumber("Vision/DepotDistance", distance)
-        );
-        SmartDashboard.putBoolean("Vision/DepotAligned", isAlignedWithDepot(2.0));
+        getDistanceToPose(VisionConstants.DEPOT_POSE, bestMeasurement)
+            .ifPresent(distance -> SmartDashboard.putNumber("Vision/DepotDistance", distance)
+            );
+        SmartDashboard.putBoolean("Vision/DepotAligned", 
+            isAlignedWithTarget(VisionConstants.DEPOT_POSE, 2.0, bestMeasurement)
+            );
 
         // Outpost distance and alignment
-        getDistanceToOutpost().ifPresent(distance ->
-            SmartDashboard.putNumber("Vision/OutpostDistance", distance)
-        );
-        SmartDashboard.putBoolean("Vision/OutpostAligned", isAlignedWithOutpost(2.0));
+        getDistanceToPose(VisionConstants.OUTPOST_POSE, bestMeasurement)
+            .ifPresent(distance -> SmartDashboard.putNumber("Vision/OutpostDistance", distance)
+            );
+        SmartDashboard.putBoolean("Vision/OutpostAligned", 
+            isAlignedWithTarget(VisionConstants.OUTPOST_POSE, 2.0, bestMeasurement)
+            );
 
         // Tower distance and alignment
-        getDistanceToTower().ifPresent(distance ->
-            SmartDashboard.putNumber("Vision/TowerDistance", distance)
-        );
-        SmartDashboard.putBoolean("Vision/TowerAligned", isAlignedWithTower(2.0));
+        getDistanceToPose(VisionConstants.TOWER_POSE, bestMeasurement)
+            .ifPresent(distance -> SmartDashboard.putNumber("Vision/TowerDistance", distance)
+            );
+        SmartDashboard.putBoolean("Vision/TowerAligned", 
+            isAlignedWithTarget(VisionConstants.TOWER_POSE, 2.0, bestMeasurement)
+            );
+
+
     }
 
-    /**
-     * Check if a camera is connected by testing if we can get a result.
-     */
-    private boolean isCameraConnected(PhotonCamera camera) {
-        try {
-            camera.getLatestResult();
-            return true;
-        } catch (Exception e) {
-            return false;
+    private Optional<Double> getDistanceToPose(Pose2d targetPose, Optional<VisionMeasurement> measurement) {
+            return measurement.map(m -> m.estimatedPose().getTranslation().getDistance(targetPose.getTranslation()));
         }
+
+    private Optional<Rotation2d> getYawToPose(Pose2d targetPose, Optional<VisionMeasurement> measurement) {
+            return measurement.map(m -> {
+                var currentPose = m.estimatedPose();
+                var translation = targetPose.getTranslation().minus(currentPose.getTranslation());
+                return new Rotation2d(translation.getX(), translation.getY()).minus(currentPose.getRotation());
+            });
+        }
+
+    private boolean isAlignedWithTarget(Pose2d targetPose, double toleranceDeg, Optional<VisionMeasurement> measurement) {
+        return getYawToPose(targetPose, measurement)
+            .map(yaw -> Math.abs(yaw.getDegrees()) < toleranceDeg)
+            .orElse(false);
+    }
+    /**
+     * Check if a camera is connected by verifying fresh frames are still arriving
+     */
+    private boolean isCameraConnected(PhotonCamera cameraName) {
+        long nowMs = System.currentTimeMillis();
+
+        if (cameraName == frontCamera) {
+            return nowMs - lastFrontUpdateMs <= CAMERA_STALE_TIMEOUT_MS;
+        } else if (cameraName == rearCamera) {
+            return nowMs - lastRearUpdateMs <= CAMERA_STALE_TIMEOUT_MS;
+        }
+
+        return false;
     }
 
     @Override
