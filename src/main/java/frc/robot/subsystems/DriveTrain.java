@@ -81,8 +81,8 @@ public class DriveTrain extends SubsystemBase{
 
     //pathplanner
     RobotConfig robotConfig;
-    LTVUnicycleController controller = new LTVUnicycleController(VecBuilder.fill(0.0625, 0.125, 2.0), VecBuilder.fill(1.0, 2.0), 0.02, 9);
-    PPLTVController ltvController = new PPLTVController(0.02);
+    private LTVUnicycleController controller = new LTVUnicycleController(VecBuilder.fill(0.0625, 0.125, 2.0), VecBuilder.fill(1.0, 2.0), 0.02, 9);
+    private PPLTVController ltvController = new PPLTVController(0.02);
     private final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
 
     //STATE
@@ -154,7 +154,7 @@ public class DriveTrain extends SubsystemBase{
         this.driver.tankDrive(-x,-y);
     }
 
-    private void stop(){
+    public void stop(){
 
     }
 
@@ -162,7 +162,11 @@ public class DriveTrain extends SubsystemBase{
 
     }
 
-    private void setOrientationMode(OrientationMode mode){
+    public void setOrientationMode(OrientationMode mode){
+
+    }
+
+    public void getOrientationMode(OrientationMode mode){
 
     }
 
@@ -172,54 +176,54 @@ public class DriveTrain extends SubsystemBase{
     }
 
     //commands
-    private Command teleopArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot){
+    public Command teleopArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot){
 
     }
 
-    private Command teleopTankCommand(DoubleSupplier left, DoubleSupplier right){
+    public Command teleopTankCommand(DoubleSupplier left, DoubleSupplier right){
 
     }
 
-    private Command fieldOrientedArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot){
+    public Command fieldOrientedArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot){
 
     }
 
 
     //Odometry
-    private Pose2d getPose(){
+    public Pose2d getPose(){
         //Pose2d pose = new Pose2d(0, 0, new Rotation2d(0.0));
 
         return odometry.getPoseMeters();
     }
 
-    private void resetPose(Pose2d pose){
+    public void resetPose(Pose2d pose){
         System.out.println(pose);
         odometry.resetPosition(gyro.getRotation2d(), getPosition(), pose);
     }
 
     //reset pose test
-    private static double getAnalogGyroAngle(int handle){
+    public static double getAnalogGyroAngle(int handle){
         handle = 0;
     }
 
 
-    private Rotation2d getHeading() {
+    public Rotation2d getHeading() {
         return Rotation2d.fromDegrees(-gyro.getAngle()); // Inverted for CCW positive
     }
 
-    private void resetGyro() {
+    public void resetGyro() {
         gyro.reset();
     }
 
-    private double getLeftDistanceMeters(){
+    public double getLeftDistanceMeters(){
         return leftEncoder.getPosition();
     }
 
-   private double getRightDistanceMeters(){
+    public double getRightDistanceMeters(){
         return rightEncoder.getPosition();
     }
 
-    private DifferentialDriveWheelSpeeds getWheelSpeeds(){
+    public DifferentialDriveWheelSpeeds getWheelSpeeds(){
         //find velocity of both encoders
     }
 
@@ -230,7 +234,7 @@ public class DriveTrain extends SubsystemBase{
     //poseOdometry = new DifferentialDriveOdometry();
 
     //chassis
-    private ChassisSpeeds getRobotRelativeSpeeds(){
+    public ChassisSpeeds getRobotRelativeSpeeds(){
         return getSpeeds(); //idk are they the same thing??
     }
 
@@ -238,11 +242,11 @@ public class DriveTrain extends SubsystemBase{
         return kinematics.toChassisSpeeds(getSpeeds());
     }
 
-    private void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds){
+    public void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds){
         driveRobotRelative(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose.getRotation2d()));
     }
 
-    private void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds){
+    public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds){
         ChassisSpeeds targetSpeeds = ChassisSpeeds.discretize(robotRelativeSpeeds, 0.02);
 
         //????
@@ -280,7 +284,7 @@ public class DriveTrain extends SubsystemBase{
     }
 }
 
-    private Command getAutoCommand (String autoName){
+    public Command getAutoCommand (String autoName){
          //add return
     }
 
@@ -298,11 +302,11 @@ public class DriveTrain extends SubsystemBase{
         
     }
 
-    private Optional<Pose2d> getVisionSeededPose(){
+    public Optional<Pose2d> getVisionSeededPose(){
         
     }
 
-    private Boolean setVisionEnabled(Boolean enabled){
+    public Boolean setVisionEnabled(Boolean enabled){
         return enabled;
     }
 
