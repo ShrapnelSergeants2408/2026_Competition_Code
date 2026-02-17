@@ -40,12 +40,23 @@ public final class Constants {
     public final static int positionEncoder = 11;
 
     //CANID
-    public final static int LEFT_LEAD_CANID = 20;
-    public final static int RIGHT_LEAD_CANID = 22;
+    public final static int LEFT_LEAD_CAN_ID = 20;
+    public final static int RIGHT_LEAD_CAN_ID = 22;
 
-    public final static int LEFT_FOLLOW_CANID = 21;
-    public final static int RIGHT_FOLLOW_CANID = 23;
+    public final static int LEFT_FOLLOW_CAN_ID = 21;
+    public final static int RIGHT_FOLLOW_CAN_ID = 23;
 
+    //motor config
+    public final static double CURRENT_LIMIT = 0.0;
+
+    public final static double OPEN_LOOP_RAMP = 0.0;
+    public final static double CLOSED_LOOP_RAMP = 0.0;
+
+    public final static double LEFT_INVERTED = -1.0;
+    public final static double RIGH_INVERTED = -1.0;
+
+    //driving
+    public final static double JOYSTICK_DEADBAND = 0.0;
 
   }
 
@@ -58,8 +69,23 @@ public final class Constants {
   }
 
   public static class Auto {
+    //LTV parameters
+
+    //conversions
     public final static double WHEEL_DIAMETER_METERS = 0.1524; 
     public final static double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS*Math.PI; 
+    public final static double DRIVE_GEAR_RATIO = 0.0;
+    public final static double POSITION_FACTOR = 0.0;
+    public final static double VELOCITY_FACTOR = 0.0;
+
+    //kinematics
+    public final static double TRACK_WIDTH_METERS = 0.546;
+
+    //PathPlanner
+    public final static double MAX_MODULE_SPEED = 3.0; //m/s
+    public final static double MAX_ACCELERATION = 2.0; //m/s^2
+    public final static double MAX_ANGULAR_VELOCITY = 540.0; //deg/s
+    public final static double MAX_ANGULAR_ACCELERATION = 720.0; //deg/s^2
 
   }
 
