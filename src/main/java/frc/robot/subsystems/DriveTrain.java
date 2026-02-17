@@ -53,11 +53,11 @@ public class DriveTrain extends SubsystemBase{
     public enum OrientationMode{ ROBOT_ORIENTED, FIELD_ORIENTED}
 
     //hardware
-    private final SparkMax leftMotorLead = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
-    private final SparkMax rightMotorLead = new SparkMax(RIGHT_MOTOR_PORT, MotorType.kBrushless);
+    private final SparkMax leftMotorLead = new SparkMax(LEFT_LEAD_CAN_ID, MotorType.kBrushless);
+    private final SparkMax rightMotorLead = new SparkMax(RIGHT_LEAD_CAN_ID, MotorType.kBrushless);
 
-    private final SparkMax leftMotorFollow = new SparkMax(LEFT_MOTOR_PORT, MotorType.kBrushless);
-    private final SparkMax rightMotorFollow = new SparkMax(RIGHT_MOTOR_PORT, MotorType.kBrushless);
+    private final SparkMax leftMotorFollow = new SparkMax(LEFT_FOLLOW_CAN_ID, MotorType.kBrushless);
+    private final SparkMax rightMotorFollow = new SparkMax(RIGHT_FOLLOW_CAN_ID, MotorType.kBrushless);
 
     private final RelativeEncoder leftEncoder = leftMotorLead.getEncoder();
     private final RelativeEncoder rightEncoder = rightMotorLead.getEncoder();
@@ -93,7 +93,7 @@ public class DriveTrain extends SubsystemBase{
     //DEPENDENCIES DONT DELETE
     //private VisionSubsystem visionSubsystem = null;
 
-    private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(gyroAngle, leftDistance, rightDistance, initialPoseMeters);
+    private DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(gyro.getAngle() , getLeftDistanceMeters(), getRightDistanceMeters(),  initialPoseMeters); //add vision subsystem from main
 
     //trajectory follower change with pathplanner values
     /*
@@ -198,14 +198,15 @@ public class DriveTrain extends SubsystemBase{
 
     public void resetPose(Pose2d pose){
         System.out.println(pose);
-        odometry.resetPosition(gyro.getRotation2d(), getPosition(), pose);
+        odometry.resetPosition(gyro.getRotation2d(), getPosition(), pose);//change to getPoseMeters()?
     }
 
     //reset pose test
+    /* 
     public static double getAnalogGyroAngle(int handle){
         handle = 0;
     }
-
+*/
 
     public Rotation2d getHeading() {
         return Rotation2d.fromDegrees(-gyro.getAngle()); // Inverted for CCW positive
@@ -216,11 +217,11 @@ public class DriveTrain extends SubsystemBase{
     }
 
     public double getLeftDistanceMeters(){
-        return leftEncoder.getPosition();
+        return leftEncoder.getPosition()*WHEEL_CIRCUMFERENCE_METERS/DRIVE_GEAR_RATIO; //8.46 = gear ratio
     }
 
     public double getRightDistanceMeters(){
-        return rightEncoder.getPosition();
+        return rightEncoder.getPosition()*WHEEL_CIRCUMFERENCE_METERS/DRIVE_GEAR_RATIO;
     }
 
     public DifferentialDriveWheelSpeeds getWheelSpeeds(){
@@ -239,11 +240,11 @@ public class DriveTrain extends SubsystemBase{
     }
 
     private ChassisSpeeds getSpeeds(){
-        return kinematics.toChassisSpeeds(getSpeeds());
+        return kinematics.toChassisSpeeds(getWheelSpeeds());
     }
 
     public void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds){
-        driveRobotRelative(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose.getRotation2d()));
+        driveRobotRelative(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose().getRotation()));
     }
 
     public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds){

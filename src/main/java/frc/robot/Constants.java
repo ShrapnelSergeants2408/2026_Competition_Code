@@ -30,9 +30,7 @@ public final class Constants {
   public static class DriveTrain {
     // distance from center of robot to center of wheel (cm)
     public final static double WHEEL_DISTANCE = 0.0; // cm
-    public final static int LEFT_MOTOR_PORT = 0;
-    public final static int RIGHT_MOTOR_PORT = 1;
-
+  
     //encoders
     public final static int leftEncoder = 2;
     public final static int rightEncoder = 3;
@@ -74,7 +72,7 @@ public final class Constants {
     //conversions
     public final static double WHEEL_DIAMETER_METERS = 0.1524; 
     public final static double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS*Math.PI; 
-    public final static double DRIVE_GEAR_RATIO = 0.0;
+    public final static double DRIVE_GEAR_RATIO = 8.46;
     public final static double POSITION_FACTOR = 0.0;
     public final static double VELOCITY_FACTOR = 0.0;
 
