@@ -188,3 +188,5 @@ compile_commands.json
 
 # ignore metals directory that scala extension insists on creating.
 .metals/
+# Claude Code local settings
+.claude/

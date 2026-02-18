@@ -4,11 +4,25 @@
 
 package frc.robot;
 
-import frc.robot.Constants.OperatorConstants;
-//import frc.robot.subsystems.ExampleSubsystem;
+import static frc.robot.Constants.ShooterConstants.NOMINAL_VOLTAGE;
+
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.UsbCamera;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.VisionConstants;
+import frc.robot.subsystems.Climber;
+import frc.robot.subsystems.DriveTrain;
+import frc.robot.subsystems.Intake;
+import frc.robot.subsystems.Shooter;
+import frc.robot.subsystems.VisionSubsystem;
+//import frc.robot.subsystems.ExampleSubsystem;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -18,14 +32,50 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
  */
 public class RobotContainer {
   // The robot's subsystems and commands are defined here...
-  //private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
+
+  // Climber subsystem
+  private final Climber climber = new Climber();
+
+  // Intake subsystem
+  private final Intake intake = new Intake();
+
+  // Shooter subsystem
+  private final Shooter shooter = new Shooter(NOMINAL_VOLTAGE);
+
+  // Vision subsystem
+  private final VisionSubsystem vision = new VisionSubsystem();
+
+  // Drivetrain subsystem
+  private final DriveTrain drivetrain = new DriveTrain(vision);
+
+  // Driver camera (USB webcam)
+  private final UsbCamera driverCamera;
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
+
+  // Add Autonomous chooser
+  private final SendableChooser<Command> autoChooser;
+
+
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
+    // Initialize driver camera (USB webcam on front)
+    driverCamera = CameraServer.startAutomaticCapture(
+        VisionConstants.DRIVER_CAMERA_NAME,
+        0  // USB port 0 (TODO: adjust if needed)
+    );
+
+    // TODO: Configure resolution and FPS for low latency
+    driverCamera.setResolution(320, 240);  // Low res for speed
+    driverCamera.setFPS(30);
+
+    // Build auto chooser — must run after DriveTrain constructor calls AutoBuilder.configure()
+    autoChooser = AutoBuilder.buildAutoChooser();
+    SmartDashboard.putData("Auto Chooser", autoChooser);
+
     // Configure the trigger bindings
     configureBindings();
   }
@@ -39,6 +89,8 @@ public class RobotContainer {
    * PS4} controllers or {@link edu.wpi.first.wpilibj2.command.button.CommandJoystick Flight
    * joysticks}.
    */
+
+   
   private void configureBindings() {
     // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
     //new Trigger(m_exampleSubsystem::exampleCondition)
@@ -55,11 +107,11 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
 
-  /* 
+   
   public Command getAutonomousCommand() {
-    // An example command will be run in autonomous
-    return Autos.exampleAuto(m_exampleSubsystem);
+    Command selectedAuto = autoChooser.getSelected();
+    drivetrain.initializePose(selectedAuto); // seed pose from vision or auto path before running
+    return selectedAuto;
   }
-*/
 
 }
