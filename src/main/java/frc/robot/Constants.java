@@ -36,6 +36,7 @@ public final class Constants {
     public static class IntakeConstants {
         public static final int INTAKE_MOTOR_ID = 42;
         public static final int STALL_LIMIT = 30;
+        public static final int SPIKE_DEBOUNCE_CYCLES = 5;
         public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
         public static final int INTAKE_CURRENT_LIMIT = 30; // adjust as needed
         public static final double INTAKE_SPEED = 0.5; //

@@ -22,7 +22,6 @@ public class Intake extends SubsystemBase {
 
     private int currentSpikeCounter = 0; // Spike debounce counter
     private boolean currentSpiking = false; // Spike state
-    private static final int SPIKE_DEBOUNCE_CYCLES = 5;
 
     private boolean reversing = false; // Jam reverse active
     private double lastForwardSpeed = 0.0; // Last forward speed before jam
