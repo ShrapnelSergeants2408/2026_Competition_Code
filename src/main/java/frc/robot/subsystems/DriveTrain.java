@@ -43,10 +43,13 @@ public class DriveTrain extends SubsystemBase {
 
     public enum DriveMode {
         ARCADE,
-        TANK,
+        TANK
     }
 
-    public enum OrientationMode { ROBOT_ORIENTED, FIELD_ORIENTED }
+    public enum OrientationMode { 
+        ROBOT_ORIENTED, 
+        FIELD_ORIENTED 
+    }
 
     // Hardware
     private final SparkMax leftMotorLead   = new SparkMax(LEFT_LEAD_CAN_ID,   MotorType.kBrushless);
@@ -65,21 +68,28 @@ public class DriveTrain extends SubsystemBase {
     private final DifferentialDriveKinematics kinematics =
         new DifferentialDriveKinematics(TRACK_WIDTH_METERS);
 
-    // Primary odometry — initialized with placeholder; reset by initializePose() before auto.
+    // Odometry
+    
     private final DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(
-        gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters(), new Pose2d()
+        gyro.getRotation2d(), 
+        getLeftDistanceMeters(), 
+        getRightDistanceMeters(), 
+        new Pose2d()
     );
 
     // Pose estimator — same as poseOdometry but also accepts vision measurements.
     private final DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(
-        kinematics, getHeading(), getLeftDistanceMeters(), getRightDistanceMeters(), new Pose2d()
+        kinematics, getHeading(), 
+        getLeftDistanceMeters(), 
+        getRightDistanceMeters(), 
+        new Pose2d()
     );
 
     private final Field2d field = new Field2d();
 
     // PathPlanner
     private RobotConfig robotConfig;
-    private final PPLTVController ltvController = new PPLTVController(0.02);
+    private final PPLTVController ltvController = new PPLTVController(0.02); //TODO do we need a different LTV constructor?
 
     // State
     private DriveMode driveMode = DriveMode.ARCADE;
@@ -107,6 +117,7 @@ public class DriveTrain extends SubsystemBase {
 
     // ---- Motor Configuration ----
 
+    // TODO look in to deprecated modes
     private void configureMotors() {
         // Invert right side so positive output = forward on both sides
         SparkMaxConfig rightLeadConfig = new SparkMaxConfig();
@@ -166,7 +177,7 @@ public class DriveTrain extends SubsystemBase {
     public void initializePose(Command autoCommand) {
         Pose2d initialPose = null;
 
-        // 1. Use vision if it can see AprilTags right now
+        // Use vision if it can see AprilTags right now
         if (visionSubsystem != null) {
             Optional<VisionMeasurement> visionMeasurement = visionSubsystem.getBestVisionMeasurement();
             if (visionMeasurement.isPresent()) {
@@ -174,12 +185,12 @@ public class DriveTrain extends SubsystemBase {
             }
         }
 
-        // 2. Fall back to the starting pose defined in the selected PathPlanner auto
+        // Fall back to the starting pose defined in the selected PathPlanner auto
         if (initialPose == null && autoCommand instanceof PathPlannerAuto ppAuto) {
             initialPose = ppAuto.getStartingPose();
         }
 
-        // 3. Last resort: field origin
+        // Last resort: field origin 
         if (initialPose == null) {
             initialPose = new Pose2d();
         }
@@ -203,6 +214,7 @@ public class DriveTrain extends SubsystemBase {
         ), this);
     }
 
+    //TODO do we need to add a robotOriented command?
     public Command fieldOrientedArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot) {
         return new RunCommand(() -> {
             double forward   = applyDeadband(fwd.getAsDouble(), JOYSTICK_DEADBAND);
@@ -214,6 +226,8 @@ public class DriveTrain extends SubsystemBase {
             arcadeDrive(fieldFwd, fieldRot);
         }, this);
     }
+
+    //TODO are these drive commands needed if we have those above?
 
     /** Generic drive command for use from RobotContainer (x = fwd, y = turn). */
     public Command driveCommand(DoubleSupplier fnX, DoubleSupplier fnY) {
@@ -284,7 +298,7 @@ public class DriveTrain extends SubsystemBase {
         driver.tankDrive(
             wheelSpeeds.leftMetersPerSecond  / MAX_MODULE_SPEED,
             wheelSpeeds.rightMetersPerSecond / MAX_MODULE_SPEED,
-            false // don't square inputs — PathPlanner provides precise values
+            false 
         );
     }
 
@@ -298,7 +312,7 @@ public class DriveTrain extends SubsystemBase {
         return kinematics.toChassisSpeeds(getWheelSpeeds());
     }
 
-    // ---- Odometry & Pose ----
+    // odometery and pose
 
     public Pose2d getPose() {
         return poseOdometry.getPoseMeters();
@@ -340,7 +354,7 @@ public class DriveTrain extends SubsystemBase {
         );
     }
 
-    // ---- Vision ----
+    // Vision 
 
     private void updateVisionMeasurements() {
         if (visionSubsystem == null) return;
@@ -364,13 +378,13 @@ public class DriveTrain extends SubsystemBase {
         return enabled;
     }
 
-    // ---- PathPlanner Auto ----
+    // PathPlanner Aut
 
     public Command getAutoCommand(String autoName) {
         return new PathPlannerAuto(autoName);
     }
 
-    // ---- Telemetry ----
+    // Telemetry
 
     private void updateTelemetry() {
         field.setRobotPose(getPose());
@@ -379,5 +393,7 @@ public class DriveTrain extends SubsystemBase {
         SmartDashboard.putNumber("DriveTrain/RightDistMeters", getRightDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/HeadingDeg",      getHeading().getDegrees());
         SmartDashboard.putString("DriveTrain/DriveMode",       driveMode.toString());
+
+        //TODO do we need to add more telemetry stuff to dashboard?
     }
 }
