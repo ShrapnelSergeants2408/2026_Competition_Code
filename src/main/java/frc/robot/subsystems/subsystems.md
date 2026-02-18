@@ -16,3 +16,6 @@ To use sparkmax... (TODO)
 old way to do commands is to create a Command class which produces essentially a function using the initialize(), execute(), end(), and isFinished(). However new method is to define a function and then pass it to InstantCommand(), RunCommand, StartEndCommand(), the new method is prefered and easier to work with, as it requires less boilerplate.
 
 Commands are high level functions of the subsystem which are coordinated by the Robot's CommandScheduler. Command functions 
+
+# Shooter
+Shooter is the subsystem used for shooting the fuel into the scoring net. it consists of 2 sparkmax motors, the shooter motor and feeding motor, which are configured via the SparkMaxConfig class to add 
