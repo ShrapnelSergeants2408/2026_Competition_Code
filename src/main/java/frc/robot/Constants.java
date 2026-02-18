@@ -4,9 +4,7 @@
 
 package frc.robot;
 
-<<<<<<< HEAD
 import com.ctre.phoenix6.CANBus;
-=======
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -16,7 +14,6 @@ import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
->>>>>>> main
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
@@ -35,62 +32,69 @@ public final class Constants {
         public static final int kDriverControllerPort = 0;
     }
 
+
+
     public static class ClimberConstants {}
 
+
+    
     public static class DriveTrainConstants {
 
-<<<<<<< HEAD
-  public static class DriveTrain {
-    // distance from center of robot to center of wheel (cm)
-    public final static double WHEEL_DISTANCE = 0.0; // cm
-  
-    //encoders
-    public final static int leftEncoder = 2;
-    public final static int rightEncoder = 3;
+        // distance from center of robot to center of wheel (cm)
+        public final static double WHEEL_DISTANCE = 0.0; // cm
     
-    public final static int positionEncoder = 11;
+        //encoders
+        public final static int leftEncoder = 2;
+        public final static int rightEncoder = 3;
+        
+        public final static int positionEncoder = 11;
 
-    //CANID
-    public final static int LEFT_LEAD_CAN_ID = 20;
-    public final static int RIGHT_LEAD_CAN_ID = 22;
+        //CANID
+        public final static int LEFT_LEAD_CAN_ID = 20;
+        public final static int RIGHT_LEAD_CAN_ID = 22;
 
-    public final static int LEFT_FOLLOW_CAN_ID = 21;
-    public final static int RIGHT_FOLLOW_CAN_ID = 23;
+        public final static int LEFT_FOLLOW_CAN_ID = 21;
+        public final static int RIGHT_FOLLOW_CAN_ID = 23;
 
-    //motor config
-    public final static double CURRENT_LIMIT = 0.0;
+        //motor config
+        public final static double CURRENT_LIMIT = 0.0;
 
-    public final static double OPEN_LOOP_RAMP = 0.0;
-    public final static double CLOSED_LOOP_RAMP = 0.0;
+        public final static double OPEN_LOOP_RAMP = 0.0;
+        public final static double CLOSED_LOOP_RAMP = 0.0;
 
-    public final static double LEFT_INVERTED = -1.0;
-    public final static double RIGH_INVERTED = -1.0;
+        public final static double LEFT_INVERTED = -1.0;
+        public final static double RIGH_INVERTED = -1.0;
 
-    //driving
-    public final static double JOYSTICK_DEADBAND = 0.0;
+        //driving
+        public final static double JOYSTICK_DEADBAND = 0.0;
 
-  }
-=======
+  
         // // distance from center of robot to center of wheel (cm)
         // public static final double WHEEL_DISTANCE = 0.0; // cm
-        public static final int LEFT_MOTOR_ID_LEAD = 20;
-        public static final int LEFT_MOTOR_ID_FOLLOW = 21;
-        public static final int RIGHT_MOTOR_ID_LEAD = 22;
-        public static final int RIGHT_MOTOR_ID_FOLLOW = 23;        
+    //    public static final int LEFT_MOTOR_ID_LEAD = 20;
+    //    public static final int LEFT_MOTOR_ID_FOLLOW = 21;
+    //    public static final int RIGHT_MOTOR_ID_LEAD = 22;
+    //    public static final int RIGHT_MOTOR_ID_FOLLOW = 23;        
     }
->>>>>>> main
 
     public static class IntakeConstants {}
 
+
+    
     public static class ShooterConstants {
 
         public static final int STALL_LIMIT = 30;
         // CAN IDs
         public static final int SHOOTER_MOTOR_ID = 30;
         public static final int FEEDER_MOTOR_ID = 31;
+        
+        // Motor speeds
+        public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
+        public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
+        public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
+    }
 
-<<<<<<< HEAD
-  }
+
 
   public static class Auto {
     //LTV parameters
@@ -113,12 +117,7 @@ public final class Constants {
 
   }
 
-=======
-        // Motor speeds
-        public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
-        public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
-        public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
-    }
+
 
     public static class VisionConstants {
         // Camera names (must match PhotonVision configuration)
@@ -173,5 +172,4 @@ public final class Constants {
         public static final Pose2d OUTPOST_POSE = new Pose2d(8.27, 0.5, Rotation2d.fromDegrees(90)); // TODO: Update with actual 2026 game positions
         public static final Pose2d TOWER_POSE = new Pose2d(8.27, 7.5, Rotation2d.fromDegrees(270)); // TODO: Update with actual 2026 game positions
     }
->>>>>>> main
 }
