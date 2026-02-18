@@ -31,32 +31,124 @@ public final class Constants {
         public static final int kDriverControllerPort = 0;
     }
 
-    public static class ClimberConstants {}
 
+
+    public static class ClimberConstants {
+    public static final int CLIMBER_MOTOR_ID = 6; // Replace with your motor ID
+    public static final double CLIMB_SPEED = 0.5; // Adjust (0-1)
+    public static final int CLIMBER_CURRENT_LIMIT = 30; // Amps
+    public static final double NOMINAL_VOLTAGE = 12.0; // Volts}
+
+
+    
     public static class DriveTrainConstants {
 
-        // // distance from center of robot to center of wheel (cm)
-        // public static final double WHEEL_DISTANCE = 0.0; // cm
-        public static final int LEFT_MOTOR_ID_LEAD = 20;
-        public static final int LEFT_MOTOR_ID_FOLLOW = 21;
-        public static final int RIGHT_MOTOR_ID_LEAD = 22;
-        public static final int RIGHT_MOTOR_ID_FOLLOW = 23;        
+        // distance from center of robot to center of wheel (cm)
+        public final static double WHEEL_DISTANCE = 0.0; // cm
+    
+        //encoders
+        public final static int leftEncoder = 2;
+        public final static int rightEncoder = 3;
+        
+        public final static int positionEncoder = 11;
+
+        //CANID
+        public final static int LEFT_LEAD_CAN_ID = 20;
+        public final static int RIGHT_LEAD_CAN_ID = 22;
+
+        public final static int LEFT_FOLLOW_CAN_ID = 21;
+        public final static int RIGHT_FOLLOW_CAN_ID = 23;
+
+        //motor config
+        public final static double CURRENT_LIMIT = 0.0;
+
+        public final static double OPEN_LOOP_RAMP = 0.0;
+        public final static double CLOSED_LOOP_RAMP = 0.0;
+
+        public final static double LEFT_INVERTED = -1.0;
+        public final static double RIGH_INVERTED = -1.0;
+
+        //driving
+        public final static double JOYSTICK_DEADBAND = 0.05;
+
+  
     }
 
-    public static class IntakeConstants {}
+    public static class IntakeConstants {
+        public static final int INTAKE_MOTOR_ID = 42;
+        public static final int STALL_LIMIT = 30;
+        public static final int SPIKE_DEBOUNCE_CYCLES = 5; // seconds
+        public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
+        public static final int INTAKE_CURRENT_LIMIT = 30; // adjust as needed
+        public static final double INTAKE_SPEED = 0.5; //
+        public static final double REVERSE_SPEED = -0.5; // 
+        public static final double SLOW_INTAKE_SPEED = 0.4; //
+        public static final double INTAKE_CURRENT_SPIKE_THRESHOLD = 35.0; // amps
+        public static final double JAM_REVERSE_SPEED = -0.5;
+        public static final double JAM_REVERSE_TIME_SEC = 0.25;
+        public static final double EJECT_SPEED = 0;
+
+    }
 
     public static class ShooterConstants {
 
         public static final int STALL_LIMIT = 30;
         // CAN IDs
-        public static final int SHOOTER_MOTOR_ID = 30;
-        public static final int FEEDER_MOTOR_ID = 31;
+        public static final int SHOOTER_MOTOR_ID = 31;
+        public static final int FEEDER_MOTOR_ID = 32;
 
         // Motor speeds
         public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
         public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
         public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
+        
+         // Current limit for the shooter motor (in amps)
+         public static final int SHOOTER_CURRENT_LIMIT = 40; // adjust as needed
+         public static final int FEEDER_CURRENT_LIMIT = 30; // adjust as needed
+         // PID / feedforward constants
+         public static final double TARGET_RPM_10_FEET = 2950.0;
+         public static final double SHOOTER_KP = 1.0;       // proportional (starting value)
+         public static final double SHOOTER_KI = 0.0;       // integral
+         public static final double SHOOTER_KD = 0.0;       // derivative
+         public static final double SHOOTER_KV = 0.12;      // feedforward
+         public static final double RPM_TOLERANCE = 50.0; // within+50 rpm is ready
+        
+          // Distance to RPM mapping (distance in feet -> target RPM)
+          // we can adjust these RPMs based on shooter testing
+         public static final double[] DISTANCES_FEET = {5, 7.5, 12.5, 15, 17.5, 20};
+         public static final double[] DISTANCE_RPM_MAP = {2500, 2700, 2950, 3100, 3200, 3300};
+       
+        }
+         public static class SensorConstants {
+        public static final int LIGHT_SENSOR_DIO_PORT = 0; // Add your DIO port here
+        public static final int BALL_SENSOR_DIO_PORT = 0; // Add your DIO port here
+        public static final boolean BALL_SENSOR_INVERTED = true;
+
+        
+
     }
+    public static class Auto {
+    //LTV parameters
+
+    //conversions
+    public final static double WHEEL_DIAMETER_METERS = 0.1524; 
+    public final static double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS*Math.PI; 
+    public final static double DRIVE_GEAR_RATIO = 8.46;
+    public final static double POSITION_FACTOR = 0.0;
+    public final static double VELOCITY_FACTOR = 0.0;
+
+    //kinematics
+    public final static double TRACK_WIDTH_METERS = 0.546;
+
+    //PathPlanner
+    public final static double MAX_MODULE_SPEED = 3.0; //m/s
+    public final static double MAX_ACCELERATION = 2.0; //m/s^2
+    public final static double MAX_ANGULAR_VELOCITY = 540.0; //deg/s
+    public final static double MAX_ANGULAR_ACCELERATION = 720.0; //deg/s^2
+
+  }
+
+
 
     public static class VisionConstants {
         // Camera names (must match PhotonVision configuration)
@@ -111,4 +203,5 @@ public final class Constants {
         public static final Pose2d OUTPOST_POSE = new Pose2d(8.27, 0.5, Rotation2d.fromDegrees(90)); // TODO: Update with actual 2026 game positions
         public static final Pose2d TOWER_POSE = new Pose2d(8.27, 7.5, Rotation2d.fromDegrees(270)); // TODO: Update with actual 2026 game positions
     }
+
 }
