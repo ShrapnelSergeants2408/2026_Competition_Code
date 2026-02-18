@@ -1,11 +1,21 @@
 package frc.robot;
 
-import frc.robot.Constants.OperatorConstants;
-import frc.robot.subsystems.ShooterSubsystem;
+import static frc.robot.Constants.ShooterConstants.NOMINAL_VOLTAGE;
+
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import edu.wpi.first.wpilibj2.command.Commands; // <-- for run()
+import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.VisionConstants;
+import frc.robot.subsystems.Climber;
+import frc.robot.subsystems.DriveTrain;
+import frc.robot.subsystems.Intake;
+import frc.robot.subsystems.Shooter;
+import frc.robot.subsystems.ShooterSubsystem;
+import frc.robot.subsystems.VisionSubsystem;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -15,17 +25,49 @@ import edu.wpi.first.wpilibj2.command.Commands; // <-- for run()
  */
 public class RobotContainer {
   // The robot's subsystems and commands are defined here...
-  //private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
 
-  // Instantiate the shooter subsystem
+  // Climber subsystem
+  private final Climber climber = new Climber();
+
+  // Intake subsystem
+  private final Intake intake = new Intake();
+
+  // Shooter subsystem
+  // TODO: cleanup - Shooter was replaced by ShooterSubsystem in shooter branch; remove one
+  private final Shooter shooter = new Shooter(NOMINAL_VOLTAGE);
+
+  // Drivetrain subsystem
+  private final DriveTrain drivetrain = new DriveTrain();
+
+  // Vision subsystem
+  private final VisionSubsystem vision = new VisionSubsystem();
+
+  // Driver camera (USB webcam)
+  private final UsbCamera driverCamera;
+
+  // TODO: cleanup - ShooterSubsystem is the shooter branch replacement for Shooter; remove one
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
+
+
+
+
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
+    // Initialize driver camera (USB webcam on front)
+    driverCamera = CameraServer.startAutomaticCapture(
+        VisionConstants.DRIVER_CAMERA_NAME,
+        0  // USB port 0 (TODO: adjust if needed)
+    );
+
+    // TODO: Configure resolution and FPS for low latency
+    driverCamera.setResolution(320, 240);  // Low res for speed
+    driverCamera.setFPS(30);
+
     // Configure the trigger bindings
     configureBindings();
   }
@@ -33,6 +75,8 @@ public class RobotContainer {
   /**
    * Use this method to define your trigger->command mappings.
    */
+
+   
   private void configureBindings() {
 
     // Xbox buttons for shooter
