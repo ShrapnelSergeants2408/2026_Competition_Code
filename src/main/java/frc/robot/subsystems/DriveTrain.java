@@ -1,7 +1,5 @@
 package frc.robot.subsystems;
 
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -78,8 +76,6 @@ public class DriveTrain extends SubsystemBase {
     );
 
     private final Field2d field = new Field2d();
-    private final AprilTagFieldLayout aprilTagFieldLayout =
-        AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
 
     // PathPlanner
     private RobotConfig robotConfig;
@@ -116,18 +112,18 @@ public class DriveTrain extends SubsystemBase {
         SparkMaxConfig rightLeadConfig = new SparkMaxConfig();
         rightLeadConfig.inverted(true);
         rightMotorLead.configure(rightLeadConfig,
-            ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         // Follow motors mirror their respective leads
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
         leftFollowConfig.follow(leftMotorLead);
         leftMotorFollow.configure(leftFollowConfig,
-            ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         SparkMaxConfig rightFollowConfig = new SparkMaxConfig();
         rightFollowConfig.follow(rightMotorLead);
         rightMotorFollow.configure(rightFollowConfig,
-            ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
 
     // ---- PathPlanner Configuration ----
@@ -179,15 +175,8 @@ public class DriveTrain extends SubsystemBase {
         }
 
         // 2. Fall back to the starting pose defined in the selected PathPlanner auto
-        if (initialPose == null && autoCommand instanceof PathPlannerAuto) {
-            try {
-                initialPose = PathPlannerAuto.getStartingPoseFromAutoFile(autoCommand.getName());
-            } catch (Exception e) {
-                DriverStation.reportError(
-                    "Could not read starting pose from auto '" + autoCommand.getName() + "': "
-                        + e.getMessage(),
-                    e.getStackTrace());
-            }
+        if (initialPose == null && autoCommand instanceof PathPlannerAuto ppAuto) {
+            initialPose = ppAuto.getStartingPose();
         }
 
         // 3. Last resort: field origin

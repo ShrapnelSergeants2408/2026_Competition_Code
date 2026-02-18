@@ -65,7 +65,7 @@ public final class Constants {
         public final static double RIGH_INVERTED = -1.0;
 
         //driving
-        public final static double JOYSTICK_DEADBAND = 0.0;
+        public final static double JOYSTICK_DEADBAND = 0.05;
 
   
     }
