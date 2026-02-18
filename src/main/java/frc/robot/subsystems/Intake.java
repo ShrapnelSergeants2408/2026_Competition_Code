@@ -91,7 +91,7 @@ public class Intake extends SubsystemBase {
             if (runningForward && getCurrentDraw() > INTAKE_CURRENT_SPIKE_THRESHOLD) {
                 currentSpikeCounter++; // Spike detected
             } else {
-                currentSpikeCounter = Math.max(currentSpikeCounter - 1, 0); // Debounce
+                currentSpikeCounter = Math.max(currentSpikeCounter - 1, 0); // Debounce set to zero if jammed
             }
     
             if (currentSpikeCounter >= SPIKE_DEBOUNCE_CYCLES && runningForward && !reversing) {
