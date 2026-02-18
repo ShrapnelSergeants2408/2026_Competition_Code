@@ -8,6 +8,10 @@ import static frc.robot.Constants.ShooterConstants.NOMINAL_VOLTAGE;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -38,11 +42,11 @@ public class RobotContainer {
   // Shooter subsystem
   private final Shooter shooter = new Shooter(NOMINAL_VOLTAGE);
 
-  // Drivetrain subsystem
-  private final DriveTrain drivetrain = new DriveTrain();
-
   // Vision subsystem
   private final VisionSubsystem vision = new VisionSubsystem();
+
+  // Drivetrain subsystem
+  private final DriveTrain drivetrain = new DriveTrain(vision);
 
   // Driver camera (USB webcam)
   private final UsbCamera driverCamera;
@@ -52,7 +56,8 @@ public class RobotContainer {
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
 
-
+  // Add Autonomous chooser
+  private final SendableChooser<Command> autoChooser;
 
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
@@ -66,6 +71,10 @@ public class RobotContainer {
     // TODO: Configure resolution and FPS for low latency
     driverCamera.setResolution(320, 240);  // Low res for speed
     driverCamera.setFPS(30);
+
+    // Build auto chooser — must run after DriveTrain constructor calls AutoBuilder.configure()
+    autoChooser = AutoBuilder.buildAutoChooser();
+    SmartDashboard.putData("Auto Chooser", autoChooser);
 
     // Configure the trigger bindings
     configureBindings();
@@ -98,11 +107,11 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
 
-  /* 
+   
   public Command getAutonomousCommand() {
-    // An example command will be run in autonomous
-    return Autos.exampleAuto(m_exampleSubsystem);
+    Command selectedAuto = autoChooser.getSelected();
+    drivetrain.initializePose(selectedAuto); // seed pose from vision or auto path before running
+    return selectedAuto;
   }
-*/
 
 }

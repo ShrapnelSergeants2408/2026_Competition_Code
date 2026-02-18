@@ -4,7 +4,6 @@
 
 package frc.robot;
 
-import com.ctre.phoenix6.CANBus;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -69,12 +68,6 @@ public final class Constants {
         public final static double JOYSTICK_DEADBAND = 0.0;
 
   
-        // // distance from center of robot to center of wheel (cm)
-        // public static final double WHEEL_DISTANCE = 0.0; // cm
-    //    public static final int LEFT_MOTOR_ID_LEAD = 20;
-    //    public static final int LEFT_MOTOR_ID_FOLLOW = 21;
-    //    public static final int RIGHT_MOTOR_ID_LEAD = 22;
-    //    public static final int RIGHT_MOTOR_ID_FOLLOW = 23;        
     }
 
     public static class IntakeConstants {}
