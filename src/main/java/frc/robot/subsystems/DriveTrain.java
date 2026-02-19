@@ -102,7 +102,7 @@ public class DriveTrain extends SubsystemBase {
     public DriveTrain(VisionSubsystem visionSubsystem) {
         this.visionSubsystem = visionSubsystem;
         configureMotors();
-        configurePathPlanner();
+        configurePathPlanner(); //check if this is the same as addPath()
     }
 
     @Override
@@ -122,19 +122,35 @@ public class DriveTrain extends SubsystemBase {
         // Invert right side so positive output = forward on both sides
         SparkMaxConfig rightLeadConfig = new SparkMaxConfig();
         rightLeadConfig.inverted(true);
+        rightLeadConfig.smartCurrentLimit(40); 
+        rightLeadConfig.alternateEncoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
+        rightLeadConfig.alternateEncoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
         rightMotorLead.configure(rightLeadConfig,
+            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+        SparkMaxConfig leftLeadConfig = new SparkMaxConfig();
+        leftLeadConfig.smartCurrentLimit(40); 
+        leftLeadConfig.alternateEncoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
+        leftLeadConfig.alternateEncoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
+        leftMotorLead.configure(leftLeadConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         // Follow motors mirror their respective leads
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
         leftFollowConfig.follow(leftMotorLead);
+        leftFollowConfig.smartCurrentLimit(40); 
         leftMotorFollow.configure(leftFollowConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         SparkMaxConfig rightFollowConfig = new SparkMaxConfig();
         rightFollowConfig.follow(rightMotorLead);
+        rightFollowConfig.smartCurrentLimit(40); 
         rightMotorFollow.configure(rightFollowConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+        //reset encoder positions to zero
+        leftEncoder.setPosition(0);
+        rightEncoder.setPosition(0);
     }
 
     // ---- PathPlanner Configuration ----

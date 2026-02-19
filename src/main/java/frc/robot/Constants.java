@@ -67,6 +67,9 @@ public final class Constants {
         //driving
         public final static double JOYSTICK_DEADBAND = 0.05;
 
+        //gear ratio
+        public final static double GEAR_RATIO = 8.46;
+
   
     }
 
