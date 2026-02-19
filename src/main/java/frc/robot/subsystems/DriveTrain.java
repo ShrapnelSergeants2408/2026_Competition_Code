@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Result;
 import frc.robot.VisionMeasurement;
 
@@ -109,6 +110,7 @@ public class DriveTrain extends SubsystemBase {
     public void periodic() {
         poseOdometry.update(gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters());
         poseEstimator.update(gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters());
+        field.setRobotPose(poseEstimator.getEstimatedPosition());
         if (visionEnabled) {
             updateVisionMeasurements();
         }
@@ -216,14 +218,14 @@ public class DriveTrain extends SubsystemBase {
 
     // ---- Teleop Drive Commands ----
 
-    public Command teleopArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot) {
+    private Command teleopArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot) {
         return new RunCommand(() -> arcadeDrive(
             applyDeadband(fwd.getAsDouble(), JOYSTICK_DEADBAND),
             applyDeadband(rot.getAsDouble(), JOYSTICK_DEADBAND)
         ), this);
     }
 
-    public Command teleopTankCommand(DoubleSupplier left, DoubleSupplier right) {
+    private Command teleopTankCommand(DoubleSupplier left, DoubleSupplier right) {
         return new RunCommand(() -> tankDrive(
             applyDeadband(left.getAsDouble(),  JOYSTICK_DEADBAND),
             applyDeadband(right.getAsDouble(), JOYSTICK_DEADBAND)
