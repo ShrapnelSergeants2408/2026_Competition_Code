@@ -76,6 +76,8 @@ public class VisionSubsystem extends SubsystemBase {
      *
      * @return Optional VisionMeasurement containing the best pose estimate, or empty if none available
      */
+    
+
 
     public Optional<VisionMeasurement> getBestVisionMeasurement() {
         Optional<VisionMeasurement> frontMeasurement =
@@ -108,7 +110,10 @@ public class VisionSubsystem extends SubsystemBase {
         // Return whichever is present
         return frontMeasurement.or(() -> rearMeasurement);
     }
-
+    /** Returns distance to hub/speaker in FEET if visible */
+public Optional<Double> getShootingDistanceFeet() {
+    return getDistanceToHub().map(meters -> meters * 3.28084);
+}
     /**
      * Process a single camera's result and create a VisionMeasurement if valid.
      */

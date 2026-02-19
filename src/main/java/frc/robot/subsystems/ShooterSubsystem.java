@@ -5,6 +5,7 @@ import static frc.robot.Constants.SensorConstants.*;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DigitalInput;
 import com.ctre.phoenix6.hardware.TalonFX;
+import java.util.Optional;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
@@ -96,6 +97,27 @@ public class ShooterSubsystem extends SubsystemBase {
     public boolean isAtTargetSpeed(double tolerance) {
         return Math.abs(getCurrentRPM() - lastTargetRPM) <= tolerance;
     }
+    /** 
+ * Update shooter automatically using AprilTag vision distance (feet).
+ * Call this periodically while aiming.
+ */
+public void updateFromVision(Optional<Double> distanceFeetOpt) {
+
+    // If no tag visible, don't change anything
+    if (distanceFeetOpt.isEmpty()) {
+        SmartDashboard.putBoolean("Shooter Vision Ready", false);
+        return;
+    }
+
+    double distanceFeet = distanceFeetOpt.get();
+
+    // Use your existing RPM map system
+    setTargetDistance(distanceFeet);
+
+    // Signal driver when ready
+    boolean ready = canShoot();
+    SmartDashboard.putBoolean("Shooter Vision Ready", ready);
+}
 
     // --- Distance-to-RPM system ---
     public double getRPMFromDistance(double distanceFeet) {
