@@ -68,8 +68,20 @@ public class RobotContainer {
 
         // Right trigger -> feed balls only if shooter is at target speed
         m_driverController.rightTrigger()
-            .whileTrue(m_shooterSubsystem.shooterCommand())
-            .onFalse(Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem));
+    .whileTrue(
+        Commands.run(() -> {
+            // Update RPM from AprilTag vision distance
+            m_shooterSubsystem.updateFromVision(m_visionSubsystem.getShootingDistanceFeet());
+
+            // Feed only when ready
+            if (m_shooterSubsystem.canShoot()) {
+                m_shooterSubsystem.startFeeder();
+            } else {
+                m_shooterSubsystem.stopFeeder();
+            }
+        }, m_shooterSubsystem)
+    )
+    .onFalse(Commands.run(() -> m_shooterSubsystem.stopFeeder(), m_shooterSubsystem));
 
         m_driverController.b()
             .onTrue(Commands.run(() -> {
@@ -89,7 +101,7 @@ public class RobotContainer {
         m_driverController.povRight()
             .onTrue(Commands.run(() -> m_shooterSubsystem.setTargetDistance(12.5), m_shooterSubsystem));
 
-        // --- Intake bindings ---
+        //  Intake bindings 
         // Left trigger -> run intake forward while held
         m_driverController.leftTrigger()
             .whileTrue(m_intake.intakeCommand());
