@@ -33,7 +33,13 @@ public final class Constants {
 
 
 
-    public static class ClimberConstants {}
+    public static class ClimberConstants {
+    public static final int CLIMBER_MOTOR_ID = 6; // Replace with your motor ID
+    public static final double CLIMB_SPEED = 0.5; // Adjust (0-1)
+    public static final int CLIMBER_CURRENT_LIMIT = 30; // Amps
+    public static final double NOMINAL_VOLTAGE = 12.0; // Volts}
+    public static final double LEVEL_ONE_POSITION = 30.0; // adjust after testing
+    public static final double CLIMB_kP = 0.05;}
 
 
     
