@@ -14,7 +14,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Result;
 import frc.robot.VisionMeasurement;
 
@@ -33,8 +32,10 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPLTVController;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
+// import com.revrobotics.spark.SparkBase.PersistMode;
+// import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -98,9 +99,9 @@ public class DriveTrain extends SubsystemBase {
     private boolean visionEnabled = false;
 
     // Dependencies
-    private final VisionSubsystem visionSubsystem;
+    private final Vision visionSubsystem;
 
-    public DriveTrain(VisionSubsystem visionSubsystem) {
+    public DriveTrain(Vision visionSubsystem) {
         this.visionSubsystem = visionSubsystem;
         configureMotors();
         configurePathPlanner(); //check if this is the same as addPath()
@@ -119,7 +120,6 @@ public class DriveTrain extends SubsystemBase {
 
     // ---- Motor Configuration ----
 
-    // TODO look in to deprecated modes
     private void configureMotors() {
         // Invert right side so positive output = forward on both sides
         SparkMaxConfig rightLeadConfig = new SparkMaxConfig();
