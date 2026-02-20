@@ -14,7 +14,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Result;
 import frc.robot.VisionMeasurement;
 
@@ -33,8 +32,8 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPLTVController;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -124,29 +123,29 @@ public class DriveTrain extends SubsystemBase {
         // Invert right side so positive output = forward on both sides
         SparkMaxConfig rightLeadConfig = new SparkMaxConfig();
         rightLeadConfig.inverted(true);
-        rightLeadConfig.smartCurrentLimit(40); 
-        rightLeadConfig.alternateEncoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
-        rightLeadConfig.alternateEncoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
+        rightLeadConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
+        rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
+        rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
         rightMotorLead.configure(rightLeadConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         SparkMaxConfig leftLeadConfig = new SparkMaxConfig();
-        leftLeadConfig.smartCurrentLimit(40); 
-        leftLeadConfig.alternateEncoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
-        leftLeadConfig.alternateEncoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
+        leftLeadConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
+        leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
+        leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
         leftMotorLead.configure(leftLeadConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         // Follow motors mirror their respective leads
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
         leftFollowConfig.follow(leftMotorLead);
-        leftFollowConfig.smartCurrentLimit(40); 
+        leftFollowConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
         leftMotorFollow.configure(leftFollowConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         SparkMaxConfig rightFollowConfig = new SparkMaxConfig();
         rightFollowConfig.follow(rightMotorLead);
-        rightFollowConfig.smartCurrentLimit(40); 
+        rightFollowConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
         rightMotorFollow.configure(rightFollowConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
@@ -218,17 +217,17 @@ public class DriveTrain extends SubsystemBase {
 
     // ---- Teleop Drive Commands ----
 
-    private Command teleopArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot) {
+    public Command teleopArcadeCommand(double fwd, double rot) {
         return new RunCommand(() -> arcadeDrive(
-            applyDeadband(fwd.getAsDouble(), JOYSTICK_DEADBAND),
-            applyDeadband(rot.getAsDouble(), JOYSTICK_DEADBAND)
+            applyDeadband(fwd, JOYSTICK_DEADBAND),
+            applyDeadband(rot, JOYSTICK_DEADBAND)
         ), this);
     }
 
-    private Command teleopTankCommand(DoubleSupplier left, DoubleSupplier right) {
+    public Command teleopTankCommand(double left, double right) {
         return new RunCommand(() -> tankDrive(
-            applyDeadband(left.getAsDouble(),  JOYSTICK_DEADBAND),
-            applyDeadband(right.getAsDouble(), JOYSTICK_DEADBAND)
+            applyDeadband(left,  JOYSTICK_DEADBAND),
+            applyDeadband(right, JOYSTICK_DEADBAND)
         ), this);
     }
 

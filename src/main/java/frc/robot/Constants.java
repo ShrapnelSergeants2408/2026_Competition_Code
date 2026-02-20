@@ -56,13 +56,13 @@ public final class Constants {
         public final static int RIGHT_FOLLOW_CAN_ID = 23;
 
         //motor config
-        public final static double CURRENT_LIMIT = 0.0;
+        public final static double CURRENT_LIMIT = 40.0;
 
         public final static double OPEN_LOOP_RAMP = 0.0;
         public final static double CLOSED_LOOP_RAMP = 0.0;
 
         public final static double LEFT_INVERTED = -1.0;
-        public final static double RIGH_INVERTED = -1.0;
+        public final static double RIGHT_INVERTED = -1.0;
 
         //driving
         public final static double JOYSTICK_DEADBAND = 0.05;

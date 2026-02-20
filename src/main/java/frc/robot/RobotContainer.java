@@ -13,7 +13,9 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.VisionConstants;
@@ -23,6 +25,7 @@ import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.VisionSubsystem;
 //import frc.robot.subsystems.ExampleSubsystem;
+import frc.robot.subsystems.DriveTrain.OrientationMode;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -99,7 +102,29 @@ public class RobotContainer {
     // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
     // cancelling on release.
     //m_driverController.b().whileTrue(m_exampleSubsystem.exampleMethodCommand());
+
+    /*
+     *new JoystickButton(m_driverController, 8) //start button = 8
+        .toggleOnTrue(drivetrain.teleopArcadeCommand())
+        .toggleOnFalse(teleopTankCommand());
+     */
+    
+      drivetrain.setDefaultCommand(
+        new RunCommand(() ->
+        drivetrain.teleopArcadeCommand(
+          -m_driverController.getLeftY(),
+          -m_driverController.getRightY()),
+        drivetrain));
+
+      drivetrain.setDefaultCommand(
+        new RunCommand(() ->
+        drivetrain.teleopTankCommand(
+          -m_driverController.getLeftY(),
+          -m_driverController.getRightY()),
+        drivetrain));
+        
   }
+  
 
   /**
    * Use this to pass the autonomous command to the main {@link Robot} class.
