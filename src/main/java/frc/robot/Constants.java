@@ -27,93 +27,54 @@ import edu.wpi.first.math.numbers.N3;
 public final class Constants {
 
     public static class OperatorConstants {
-
         public static final int kDriverControllerPort = 0;
     }
 
-
-
     public static class ClimberConstants {}
 
-
-    
     public static class DriveTrainConstants {
 
-        // distance from center of robot to center of wheel (cm)
-        public final static double WHEEL_DISTANCE = 0.0; // cm
-    
-        //encoders
-        public final static int leftEncoder = 2;
-        public final static int rightEncoder = 3;
-        
-        public final static int positionEncoder = 11;
+        // CAN IDs
+        public static final int LEFT_LEAD_CAN_ID = 20;
+        public static final int RIGHT_LEAD_CAN_ID = 22;
+        public static final int LEFT_FOLLOW_CAN_ID = 21;
+        public static final int RIGHT_FOLLOW_CAN_ID = 23;
 
-        //CANID
-        public final static int LEFT_LEAD_CAN_ID = 20;
-        public final static int RIGHT_LEAD_CAN_ID = 22;
+        // Motor config
+        public static final int CURRENT_LIMIT = 40; // amps
 
-        public final static int LEFT_FOLLOW_CAN_ID = 21;
-        public final static int RIGHT_FOLLOW_CAN_ID = 23;
+        // Driving
+        public static final double JOYSTICK_DEADBAND = 0.05;
 
-        //motor config
-        public final static double CURRENT_LIMIT = 40.0;
-
-        public final static double OPEN_LOOP_RAMP = 0.0;
-        public final static double CLOSED_LOOP_RAMP = 0.0;
-
-        public final static double LEFT_INVERTED = -1.0;
-        public final static double RIGHT_INVERTED = -1.0;
-
-        //driving
-        public final static double JOYSTICK_DEADBAND = 0.05;
-
-        //gear ratio
-        public final static double GEAR_RATIO = 8.46;
-
-  
+        // Physical dimensions
+        public static final double GEAR_RATIO = 8.46;
+        public static final double WHEEL_DIAMETER_METERS = 0.1524; // 6 inches
+        public static final double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS * Math.PI;
+        public static final double TRACK_WIDTH_METERS = 0.546;
     }
 
     public static class IntakeConstants {}
 
-
-    
     public static class ShooterConstants {
 
         public static final int STALL_LIMIT = 30;
         // CAN IDs
         public static final int SHOOTER_MOTOR_ID = 30;
         public static final int FEEDER_MOTOR_ID = 31;
-        
+
         // Motor speeds
         public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
         public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
-        public static final double NOMINAL_VOLTAGE = 12; // i dunno, it was a hardcoded value i moved it
+        public static final double NOMINAL_VOLTAGE = 12;
     }
 
-
-
-  public static class Auto {
-    //LTV parameters
-
-    //conversions
-    public final static double WHEEL_DIAMETER_METERS = 0.1524; 
-    public final static double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS*Math.PI; 
-    public final static double DRIVE_GEAR_RATIO = 8.46;
-    public final static double POSITION_FACTOR = 0.0;
-    public final static double VELOCITY_FACTOR = 0.0;
-
-    //kinematics
-    public final static double TRACK_WIDTH_METERS = 0.546;
-
-    //PathPlanner
-    public final static double MAX_MODULE_SPEED = 3.0; //m/s
-    public final static double MAX_ACCELERATION = 2.0; //m/s^2
-    public final static double MAX_ANGULAR_VELOCITY = 540.0; //deg/s
-    public final static double MAX_ANGULAR_ACCELERATION = 720.0; //deg/s^2
-
-  }
-
-
+    public static class Auto {
+        // PathPlanner motion limits
+        public static final double MAX_MODULE_SPEED = 3.0; // m/s
+        public static final double MAX_ACCELERATION = 2.0; // m/s^2
+        public static final double MAX_ANGULAR_VELOCITY = 540.0; // deg/s
+        public static final double MAX_ANGULAR_ACCELERATION = 720.0; // deg/s^2
+    }
 
     public static class VisionConstants {
         // Camera names (must match PhotonVision configuration)

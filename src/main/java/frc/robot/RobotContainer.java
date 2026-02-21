@@ -13,10 +13,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.JoystickButton;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.subsystems.Climber;
@@ -24,8 +22,6 @@ import frc.robot.subsystems.DriveTrain;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.VisionSubsystem;
-//import frc.robot.subsystems.ExampleSubsystem;
-import frc.robot.subsystems.DriveTrain.OrientationMode;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -45,7 +41,7 @@ public class RobotContainer {
   // Shooter subsystem
   private final Shooter shooter = new Shooter(NOMINAL_VOLTAGE);
 
-  // Vision subsystem
+  // Vision subsystem (must be constructed before DriveTrain)
   private final VisionSubsystem vision = new VisionSubsystem();
 
   // Drivetrain subsystem
@@ -58,10 +54,8 @@ public class RobotContainer {
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
-
-  // Add Autonomous chooser
+  // Autonomous chooser
   private final SendableChooser<Command> autoChooser;
-
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -79,64 +73,51 @@ public class RobotContainer {
     autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Chooser", autoChooser);
 
-    // Configure the trigger bindings
+    configureDefaultCommands();
     configureBindings();
   }
 
   /**
-   * Use this method to define your trigger->command mappings. Triggers can be created via the
-   * {@link Trigger#Trigger(java.util.function.BooleanSupplier)} constructor with an arbitrary
-   * predicate, or via the named factories in {@link
-   * edu.wpi.first.wpilibj2.command.button.CommandGenericHID}'s subclasses for {@link
-   * CommandXboxController Xbox}/{@link edu.wpi.first.wpilibj2.command.button.CommandPS4Controller
-   * PS4} controllers or {@link edu.wpi.first.wpilibj2.command.button.CommandJoystick Flight
-   * joysticks}.
+   * Set up default commands for subsystems. Each subsystem can have one default command
+   * that runs whenever no other command is using that subsystem.
    */
-
-   
-  private void configureBindings() {
-    // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
-    //new Trigger(m_exampleSubsystem::exampleCondition)
-    //    .onTrue(new ExampleCommand(m_exampleSubsystem));
-
-    // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
-    // cancelling on release.
-    //m_driverController.b().whileTrue(m_exampleSubsystem.exampleMethodCommand());
-
-    /*
-     *new JoystickButton(m_driverController, 8) //start button = 8
-        .toggleOnTrue(drivetrain.teleopArcadeCommand())
-        .toggleOnFalse(teleopTankCommand());
-     */
-    
-      drivetrain.setDefaultCommand(
-        new RunCommand(() ->
-        drivetrain.teleopArcadeCommand(
-          -m_driverController.getLeftY(),
-          -m_driverController.getRightY()),
-        drivetrain));
-
-      drivetrain.setDefaultCommand(
-        new RunCommand(() ->
-        drivetrain.teleopTankCommand(
-          -m_driverController.getLeftY(),
-          -m_driverController.getRightY()),
-        drivetrain));
-        
+  private void configureDefaultCommands() {
+    // Single unified drive command — DriveTrain internally handles all 4 mode combinations
+    // (field-oriented tank, field-oriented arcade, robot-relative tank, robot-relative arcade).
+    // Defaults to field-oriented tank.
+    drivetrain.setDefaultCommand(
+        drivetrain.teleopDriveCommand(
+            () -> -m_driverController.getLeftY(),
+            () -> -m_driverController.getRightY()
+        )
+    );
   }
-  
+
+  /**
+   * Configure button-to-command bindings.
+   * Back button: toggle between Tank and Arcade drive modes.
+   * Start button: toggle between Field-Oriented and Robot-Relative orientation.
+   */
+  private void configureBindings() {
+    // Back button (select): toggle Tank <-> Arcade
+    m_driverController.back().onTrue(
+        Commands.runOnce(() -> drivetrain.toggleDriveMode(), drivetrain)
+    );
+
+    // Start button (menu): toggle Field-Oriented <-> Robot-Relative
+    m_driverController.start().onTrue(
+        Commands.runOnce(() -> drivetrain.toggleOrientationMode(), drivetrain)
+    );
+  }
 
   /**
    * Use this to pass the autonomous command to the main {@link Robot} class.
    *
    * @return the command to run in autonomous
    */
-
-   
   public Command getAutonomousCommand() {
     Command selectedAuto = autoChooser.getSelected();
     drivetrain.initializePose(selectedAuto); // seed pose from vision or auto path before running
     return selectedAuto;
   }
-
 }

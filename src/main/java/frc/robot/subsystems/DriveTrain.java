@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -12,6 +13,7 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Result;
@@ -32,8 +34,8 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPLTVController;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.PersistMode;
-import com.revrobotics.ResetMode;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -46,9 +48,9 @@ public class DriveTrain extends SubsystemBase {
         TANK
     }
 
-    public enum OrientationMode { 
-        ROBOT_ORIENTED, 
-        FIELD_ORIENTED 
+    public enum OrientationMode {
+        ROBOT_RELATIVE,
+        FIELD_ORIENTED
     }
 
     // Hardware
@@ -68,20 +70,19 @@ public class DriveTrain extends SubsystemBase {
     private final DifferentialDriveKinematics kinematics =
         new DifferentialDriveKinematics(TRACK_WIDTH_METERS);
 
-    // Odometry
-    
+    // Odometry (encoder + gyro only, useful for debugging vs estimator)
     private final DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(
-        gyro.getRotation2d(), 
-        getLeftDistanceMeters(), 
-        getRightDistanceMeters(), 
+        gyro.getRotation2d(),
+        getLeftDistanceMeters(),
+        getRightDistanceMeters(),
         new Pose2d()
     );
 
     // Pose estimator — same as poseOdometry but also accepts vision measurements.
     private final DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(
-        kinematics, getHeading(), 
-        getLeftDistanceMeters(), 
-        getRightDistanceMeters(), 
+        kinematics, getHeading(),
+        getLeftDistanceMeters(),
+        getRightDistanceMeters(),
         new Pose2d()
     );
 
@@ -89,11 +90,11 @@ public class DriveTrain extends SubsystemBase {
 
     // PathPlanner
     private RobotConfig robotConfig;
-    private final PPLTVController ltvController = new PPLTVController(0.02); //TODO do we need a different LTV constructor?
+    private final PPLTVController ltvController = new PPLTVController(0.02);
 
-    // State
-    private DriveMode driveMode = DriveMode.ARCADE;
-    private OrientationMode orientationMode = OrientationMode.ROBOT_ORIENTED;
+    // State — defaults to field-oriented tank per driver preference
+    private DriveMode driveMode = DriveMode.TANK;
+    private OrientationMode orientationMode = OrientationMode.FIELD_ORIENTED;
     private boolean visionEnabled = false;
 
     // Dependencies
@@ -102,14 +103,13 @@ public class DriveTrain extends SubsystemBase {
     public DriveTrain(VisionSubsystem visionSubsystem) {
         this.visionSubsystem = visionSubsystem;
         configureMotors();
-        configurePathPlanner(); //check if this is the same as addPath()
+        configurePathPlanner();
     }
 
     @Override
     public void periodic() {
         poseOdometry.update(gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters());
         poseEstimator.update(gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters());
-        field.setRobotPose(poseEstimator.getEstimatedPosition());
         if (visionEnabled) {
             updateVisionMeasurements();
         }
@@ -118,38 +118,40 @@ public class DriveTrain extends SubsystemBase {
 
     // ---- Motor Configuration ----
 
-    // TODO look in to deprecated modes
     private void configureMotors() {
-        // Invert right side so positive output = forward on both sides
+        // Right lead — inverted so positive output = forward on both sides.
+        // Encoder conversion factors are set on the primary (built-in hall) encoder so that
+        // getPosition() returns meters and getVelocity() returns m/s directly.
         SparkMaxConfig rightLeadConfig = new SparkMaxConfig();
         rightLeadConfig.inverted(true);
-        rightLeadConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
-        rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
-        rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
+        rightLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
+        rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
+        rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
         rightMotorLead.configure(rightLeadConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
+        // Left lead
         SparkMaxConfig leftLeadConfig = new SparkMaxConfig();
-        leftLeadConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
-        leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO);
-        leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS/GEAR_RATIO/60);
+        leftLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
+        leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
+        leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
         leftMotorLead.configure(leftLeadConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         // Follow motors mirror their respective leads
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
         leftFollowConfig.follow(leftMotorLead);
-        leftFollowConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
+        leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
         leftMotorFollow.configure(leftFollowConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         SparkMaxConfig rightFollowConfig = new SparkMaxConfig();
         rightFollowConfig.follow(rightMotorLead);
-        rightFollowConfig.smartCurrentLimit((int)CURRENT_LIMIT); 
+        rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
         rightMotorFollow.configure(rightFollowConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        //reset encoder positions to zero
+        // Reset encoder positions to zero
         leftEncoder.setPosition(0);
         rightEncoder.setPosition(0);
     }
@@ -172,10 +174,7 @@ public class DriveTrain extends SubsystemBase {
                 robotConfig,
                 () -> {
                     var alliance = DriverStation.getAlliance();
-                    if (alliance.isPresent()) {
-                        return alliance.get() == DriverStation.Alliance.Red;
-                    }
-                    return false;
+                    return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
                 },
                 this
             );
@@ -207,7 +206,7 @@ public class DriveTrain extends SubsystemBase {
             initialPose = ppAuto.getStartingPose();
         }
 
-        // Last resort: field origin 
+        // Last resort: field origin
         if (initialPose == null) {
             initialPose = new Pose2d();
         }
@@ -215,46 +214,89 @@ public class DriveTrain extends SubsystemBase {
         resetPose(initialPose);
     }
 
-    // ---- Teleop Drive Commands ----
+    // ---- Teleop Drive ----
 
-    public Command teleopArcadeCommand(double fwd, double rot) {
-        return new RunCommand(() -> arcadeDrive(
-            applyDeadband(fwd, JOYSTICK_DEADBAND),
-            applyDeadband(rot, JOYSTICK_DEADBAND)
-        ), this);
+    /**
+     * Unified teleop drive command. Accepts two joystick axis suppliers.
+     * In ARCADE mode: leftY = forward speed, rightY = rotation.
+     * In TANK mode: leftY = left wheel speed, rightY = right wheel speed.
+     * OrientationMode (field-oriented vs robot-relative) is applied automatically.
+     */
+    public Command teleopDriveCommand(DoubleSupplier leftYSupplier, DoubleSupplier rightYSupplier) {
+        return new RunCommand(
+            () -> drive(leftYSupplier.getAsDouble(), rightYSupplier.getAsDouble()),
+            this
+        );
     }
 
-    public Command teleopTankCommand(double left, double right) {
-        return new RunCommand(() -> tankDrive(
-            applyDeadband(left,  JOYSTICK_DEADBAND),
-            applyDeadband(right, JOYSTICK_DEADBAND)
-        ), this);
+    /**
+     * Main drive dispatch. Applies deadband, then routes through orientation mode and drive mode.
+     * Supports 4 states: Robot-Relative Tank, Robot-Relative Arcade,
+     * Field-Oriented Tank, Field-Oriented Arcade.
+     */
+    public void drive(double leftY, double rightY) {
+        double lY = MathUtil.applyDeadband(leftY, JOYSTICK_DEADBAND);
+        double rY = MathUtil.applyDeadband(rightY, JOYSTICK_DEADBAND);
+
+        if (orientationMode == OrientationMode.FIELD_ORIENTED) {
+            double headingRad = getHeading().getRadians();
+            switch (driveMode) {
+                case ARCADE -> fieldOrientedArcade(lY, rY, headingRad);
+                case TANK   -> fieldOrientedTank(lY, rY, headingRad);
+            }
+        } else {
+            switch (driveMode) {
+                case ARCADE -> driver.arcadeDrive(lY, rY);
+                case TANK   -> driver.tankDrive(lY, rY);
+            }
+        }
     }
 
-    //TODO do we need to add a robotOriented command?
-    public Command fieldOrientedArcadeCommand(DoubleSupplier fwd, DoubleSupplier rot) {
-        return new RunCommand(() -> {
-            double forward   = applyDeadband(fwd.getAsDouble(), JOYSTICK_DEADBAND);
-            double rotation  = applyDeadband(rot.getAsDouble(), JOYSTICK_DEADBAND);
-            double heading   = getPose().getRotation().getRadians();
-            // Rotate driver inputs to field frame
-            double fieldFwd  =  forward  * Math.cos(heading) + rotation * Math.sin(heading);
-            double fieldRot  = -forward  * Math.sin(heading) + rotation * Math.cos(heading);
-            arcadeDrive(fieldFwd, fieldRot);
-        }, this);
+    /**
+     * Field-oriented arcade drive.
+     * Rotates the driver's (forward, rotation) inputs through the robot heading
+     * so that "forward" always means field-forward regardless of robot orientation.
+     */
+    private void fieldOrientedArcade(double fwd, double rot, double headingRad) {
+        double cos = Math.cos(headingRad);
+        double sin = Math.sin(headingRad);
+        double robotFwd =  fwd * cos + rot * sin;
+        double robotRot = -fwd * sin + rot * cos;
+        driver.arcadeDrive(robotFwd, robotRot);
     }
 
-    //TODO are these drive commands needed if we have those above?
-
-    /** Generic drive command for use from RobotContainer (x = fwd, y = turn). */
-    public Command driveCommand(DoubleSupplier fnX, DoubleSupplier fnY) {
-        return new RunCommand(() -> drive(fnX.getAsDouble(), fnY.getAsDouble()), this);
+    /**
+     * Field-oriented tank drive.
+     * Decomposes tank (left, right) into (forward, turn), applies the field-oriented
+     * rotation matrix, then recomposes back to (left, right) wheel commands.
+     */
+    private void fieldOrientedTank(double left, double right, double headingRad) {
+        double fwd  = (left + right) / 2.0;
+        double turn = (right - left) / 2.0;
+        double cos = Math.cos(headingRad);
+        double sin = Math.sin(headingRad);
+        double robotFwd  =  fwd * cos + turn * sin;
+        double robotTurn = -fwd * sin + turn * cos;
+        driver.tankDrive(robotFwd - robotTurn, robotFwd + robotTurn);
     }
+
+    public void stop() {
+        driver.stopMotor();
+    }
+
+    // ---- Mode Toggling ----
 
     public void toggleDriveMode() {
         this.driveMode = switch (this.driveMode) {
             case ARCADE -> DriveMode.TANK;
             case TANK   -> DriveMode.ARCADE;
+        };
+    }
+
+    public void toggleOrientationMode() {
+        this.orientationMode = switch (this.orientationMode) {
+            case ROBOT_RELATIVE -> OrientationMode.FIELD_ORIENTED;
+            case FIELD_ORIENTED -> OrientationMode.ROBOT_RELATIVE;
         };
     }
 
@@ -266,29 +308,6 @@ public class DriveTrain extends SubsystemBase {
         return this.driveMode;
     }
 
-    public void drive(double x, double y) {
-        switch (this.driveMode) {
-            case ARCADE -> arcadeDrive(x, y);
-            case TANK   -> tankDrive(x, y);
-        }
-    }
-
-    private void arcadeDrive(double x, double y) {
-        driver.arcadeDrive(-x, y);
-    }
-
-    private void tankDrive(double x, double y) {
-        driver.tankDrive(-x, -y);
-    }
-
-    public void stop() {
-        driver.stopMotor();
-    }
-
-    private double applyDeadband(double value, double deadband) {
-        return Math.abs(value) < deadband ? 0.0 : value;
-    }
-
     public void setOrientationMode(OrientationMode mode) {
         this.orientationMode = mode;
     }
@@ -297,7 +316,8 @@ public class DriveTrain extends SubsystemBase {
         return this.orientationMode;
     }
 
-    // Testing
+    // ---- Testing ----
+
     public static List<Result> testDriveTrain() {
         return List.of(Result.pass("dummy test"));
     }
@@ -315,7 +335,7 @@ public class DriveTrain extends SubsystemBase {
         driver.tankDrive(
             wheelSpeeds.leftMetersPerSecond  / MAX_MODULE_SPEED,
             wheelSpeeds.rightMetersPerSecond / MAX_MODULE_SPEED,
-            false 
+            false
         );
     }
 
@@ -329,10 +349,10 @@ public class DriveTrain extends SubsystemBase {
         return kinematics.toChassisSpeeds(getWheelSpeeds());
     }
 
-    // odometery and pose
+    // ---- Odometry and Pose ----
 
     public Pose2d getPose() {
-        return poseOdometry.getPoseMeters();
+        return poseEstimator.getEstimatedPosition();
     }
 
     public void resetPose(Pose2d pose) {
@@ -350,28 +370,25 @@ public class DriveTrain extends SubsystemBase {
         gyro.reset();
     }
 
-    /** Left wheel distance in meters, accounting for gear ratio. */
+    /** Left wheel distance in meters. Conversion factor is set in motor config. */
     public double getLeftDistanceMeters() {
-        return leftEncoder.getPosition() * WHEEL_CIRCUMFERENCE_METERS / DRIVE_GEAR_RATIO;
+        return leftEncoder.getPosition();
     }
 
-    /** Right wheel distance in meters, accounting for gear ratio. */
+    /** Right wheel distance in meters. Conversion factor is set in motor config. */
     public double getRightDistanceMeters() {
-        return rightEncoder.getPosition() * WHEEL_CIRCUMFERENCE_METERS / DRIVE_GEAR_RATIO;
+        return rightEncoder.getPosition();
     }
 
-    /**
-     * Wheel speeds in m/s.
-     * SparkMax encoder velocity is RPM → convert: RPM * circumference / gearRatio / 60
-     */
+    /** Wheel speeds in m/s. Conversion factor is set in motor config. */
     public DifferentialDriveWheelSpeeds getWheelSpeeds() {
         return new DifferentialDriveWheelSpeeds(
-            leftEncoder.getVelocity()  * WHEEL_CIRCUMFERENCE_METERS / DRIVE_GEAR_RATIO / 60.0,
-            rightEncoder.getVelocity() * WHEEL_CIRCUMFERENCE_METERS / DRIVE_GEAR_RATIO / 60.0
+            leftEncoder.getVelocity(),
+            rightEncoder.getVelocity()
         );
     }
 
-    // Vision 
+    // ---- Vision ----
 
     private void updateVisionMeasurements() {
         if (visionSubsystem == null) return;
@@ -395,13 +412,13 @@ public class DriveTrain extends SubsystemBase {
         return enabled;
     }
 
-    // PathPlanner Aut
+    // ---- PathPlanner Auto ----
 
     public Command getAutoCommand(String autoName) {
         return new PathPlannerAuto(autoName);
     }
 
-    // Telemetry
+    // ---- Telemetry ----
 
     private void updateTelemetry() {
         field.setRobotPose(getPose());
@@ -410,7 +427,19 @@ public class DriveTrain extends SubsystemBase {
         SmartDashboard.putNumber("DriveTrain/RightDistMeters", getRightDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/HeadingDeg",      getHeading().getDegrees());
         SmartDashboard.putString("DriveTrain/DriveMode",       driveMode.toString());
+        SmartDashboard.putString("DriveTrain/OrientationMode", orientationMode.toString());
+        SmartDashboard.putString("DriveTrain/DriveState",      getDriveStateString());
+        SmartDashboard.putBoolean("DriveTrain/IsFieldOriented",
+            orientationMode == OrientationMode.FIELD_ORIENTED);
+        SmartDashboard.putBoolean("DriveTrain/IsTankDrive",
+            driveMode == DriveMode.TANK);
+    }
 
-        //TODO do we need to add more telemetry stuff to dashboard?
+    /** Returns a human-readable combined state string for dashboard display. */
+    private String getDriveStateString() {
+        String orient = (orientationMode == OrientationMode.FIELD_ORIENTED)
+            ? "Field-Oriented" : "Robot-Relative";
+        String mode = (driveMode == DriveMode.TANK) ? "Tank" : "Arcade";
+        return orient + " " + mode;
     }
 }
