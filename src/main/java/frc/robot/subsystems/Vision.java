@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
@@ -25,7 +26,7 @@ import org.photonvision.PhotonPoseEstimator.PoseStrategy;
 import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
-public class VisionSubsystem extends SubsystemBase {
+public class Vision extends SubsystemBase {
     // PhotonVision cameras
     private final PhotonCamera frontCamera;
     private final PhotonCamera rearCamera;
@@ -39,12 +40,17 @@ public class VisionSubsystem extends SubsystemBase {
 
     // Class fields
     private double lastFrontTimestamp = -1.0;
-    private double lastRearTimestamp = -1.0;
-    private long lastFrontUpdateMs = 0;
-    private long lastRearUpdateMs = 0;
-    private static final long CAMERA_STALE_TIMEOUT_MS = 500;
+    private double lastRearTimestamp  = -1.0;
+    private double lastFrontFpgaTs    = -1.0; // BUG-06: FPGA-time seconds, not wall-clock ms
+    private double lastRearFpgaTs     = -1.0;
+    private static final double CAMERA_STALE_TIMEOUT_SECONDS = 0.5;
 
-    public VisionSubsystem() {
+    // Per-loop caches — computed once in periodic(), read by all callers this cycle.
+    // INEFF-01/04/07: prevents cameras from being processed more than once per 20 ms loop.
+    private Optional<VisionMeasurement> cachedMeasurement = Optional.empty();
+    private List<Integer> cachedVisibleTags = List.of();
+
+    public Vision() {
 
 
 
@@ -71,13 +77,18 @@ public class VisionSubsystem extends SubsystemBase {
     }
 
     /**
-     * Get the best vision measurement from all cameras.
-     * Prioritizes multi-tag detections and closer, lower-ambiguity measurements.
-     *
-     * @return Optional VisionMeasurement containing the best pose estimate, or empty if none available
+     * Returns the best vision measurement cached this loop by periodic().
+     * INEFF-01/07: O(1) — no camera processing; safe to call from commands every cycle.
      */
-
     public Optional<VisionMeasurement> getBestVisionMeasurement() {
+        return cachedMeasurement;
+    }
+
+    /**
+     * Computes the best vision measurement from all cameras.
+     * Called exactly once per loop from periodic(); result stored in cachedMeasurement.
+     */
+    private Optional<VisionMeasurement> computeBestVisionMeasurement() {
         Optional<VisionMeasurement> frontMeasurement =
             processCameraResult(frontPoseEstimator, frontCamera, VisionConstants.FRONT_CAMERA_NAME);
         Optional<VisionMeasurement> rearMeasurement =
@@ -133,27 +144,25 @@ public class VisionSubsystem extends SubsystemBase {
         }
 
         var pose = estimatedPose.get();
+        var pose2d = pose.estimatedPose.toPose2d();
+
+        // BUG-04/05: Compute average distance exactly once; reuse for quality gate,
+        // std-dev selection, and the VisionMeasurement record.  This also ensures
+        // POSITIVE_INFINITY (unknown tag IDs) is caught by the quality gate before
+        // it can reach calculateStandardDeviations().
+        double avgDistance = calculateAverageTagDistance(result.getTargets(), pose2d);
 
         // Quality gating
-        if (!shouldUseMeasurement(pose, result)) {
+        if (!shouldUseMeasurement(pose, result, avgDistance)) {
             SmartDashboard.putString("Vision/" + cameraName + "CamStatus", "Rejected (quality gate)");
             return Optional.empty();
         }
 
-        // Calculate standard deviations based on measurement quality
-        Matrix<N3, N1> stdDevs = calculateStandardDeviations(
-            pose,
-            calculateAverageTagDistance(result.getTargets(), pose.estimatedPose.toPose2d())
-        );
-
-        // Count tags used
+        Matrix<N3, N1> stdDevs = calculateStandardDeviations(pose, avgDistance);
         int numTags = pose.targetsUsed.size();
 
-        // Calculate average distance
-        double avgDistance = calculateAverageTagDistance(result.getTargets(), pose.estimatedPose.toPose2d());
-
         return Optional.of(new VisionMeasurement(
-            pose.estimatedPose.toPose2d(),
+            pose2d,
             pose.timestampSeconds,
             stdDevs,
             numTags,
@@ -167,18 +176,18 @@ public class VisionSubsystem extends SubsystemBase {
      * @param result
      * @return
      */
+    // BUG-06: Use FPGA time throughout — same domain as PhotonVision timestamps.
     private void updateCameraFreshness(PhotonCamera camera, PhotonPipelineResult result) {
         double timestampSeconds = result.getTimestampSeconds();
-        long nowMs = System.currentTimeMillis();
+        double nowFpga = Timer.getFPGATimestamp();
 
         if (camera == frontCamera && timestampSeconds > lastFrontTimestamp) {
             lastFrontTimestamp = timestampSeconds;
-            lastFrontUpdateMs = nowMs;
+            lastFrontFpgaTs    = nowFpga;
         } else if (camera == rearCamera && timestampSeconds > lastRearTimestamp) {
             lastRearTimestamp = timestampSeconds;
-            lastRearUpdateMs = nowMs;
+            lastRearFpgaTs    = nowFpga;
         }
-
     }
 
 
@@ -186,17 +195,21 @@ public class VisionSubsystem extends SubsystemBase {
      * Determine if a measurement should be used based on quality criteria.
      */
 
+    // BUG-04: avgDistance is pre-computed by the caller — no redundant recalculation here.
+    // BUG-05: if avgDistance == POSITIVE_INFINITY (unknown tag IDs), the distance check
+    //         below rejects the measurement before it can propagate to std-dev selection.
     private boolean shouldUseMeasurement(
         EstimatedRobotPose pose,
-        PhotonPipelineResult result
+        PhotonPipelineResult result,
+        double avgDistance
     ) {
-        // Check if pose is within field boundaries (assuming standard FRC field ~16.5m x 8.2m)
         var pose2d = pose.estimatedPose.toPose2d();
 
         double fieldLength = fieldLayout.getFieldLength();
-        double fieldWidth = fieldLayout.getFieldWidth();
+        double fieldWidth  = fieldLayout.getFieldWidth();
 
-        if (pose2d.getX() < 0 || pose2d.getX() > fieldLength || pose2d.getY() < 0 || pose2d.getY() > fieldWidth) {
+        if (pose2d.getX() < 0 || pose2d.getX() > fieldLength
+                || pose2d.getY() < 0 || pose2d.getY() > fieldWidth) {
             return false;
         }
 
@@ -208,8 +221,7 @@ public class VisionSubsystem extends SubsystemBase {
             }
         }
 
-        // Check if any tag is beyond max distance
-        double avgDistance = calculateAverageTagDistance(result.getTargets(), pose2d);
+        // Reject if beyond max distance; also catches POSITIVE_INFINITY (BUG-05)
         if (avgDistance > VisionConstants.MAX_TAG_DISTANCE_METERS) {
             return false;
         }
@@ -301,15 +313,25 @@ public class VisionSubsystem extends SubsystemBase {
 
     /**
      * Check if a specific AprilTag is visible in any camera.
+     * INEFF-06: reads the cached tag list — no new ArrayList allocation.
      */
     public boolean isTagVisible(int tagId) {
-        return getVisibleTags().contains(tagId);
+        return cachedVisibleTags.contains(tagId);
     }
 
     /**
-     * Get list of all visible AprilTag IDs from all cameras.
+     * Returns the cached list of all visible AprilTag IDs from all cameras.
+     * INEFF-04: no per-call ArrayList allocation; list is built once in periodic().
      */
     public List<Integer> getVisibleTags() {
+        return cachedVisibleTags;
+    }
+
+    /**
+     * Builds the visible tag list from both cameras.
+     * Called exactly once per loop from periodic(); result stored in cachedVisibleTags.
+     */
+    private List<Integer> computeVisibleTags() {
         List<Integer> visibleTags = new ArrayList<>();
 
         var frontResult = frontCamera.getLatestResult();
@@ -453,13 +475,12 @@ public class VisionSubsystem extends SubsystemBase {
         SmartDashboard.putBoolean("Vision/FrontCamConnected", isCameraConnected(frontCamera));
         SmartDashboard.putBoolean("Vision/RearCamConnected", isCameraConnected(rearCamera));
 
-        // Visible tags
-        List<Integer> visibleTags = getVisibleTags();
-        SmartDashboard.putNumber("Vision/NumTagsVisible", visibleTags.size());
-        SmartDashboard.putString("Vision/VisibleTags", visibleTags.toString());
+        // Visible tags — read from per-loop cache (INEFF-04)
+        SmartDashboard.putNumber("Vision/NumTagsVisible", cachedVisibleTags.size());
+        SmartDashboard.putString("Vision/VisibleTags", cachedVisibleTags.toString());
 
-        // Cache best pose estimate once for this cycle
-        Optional<VisionMeasurement> bestMeasurement = getBestVisionMeasurement();
+        // Best measurement — read from per-loop cache (INEFF-01)
+        Optional<VisionMeasurement> bestMeasurement = cachedMeasurement;
 
         if (bestMeasurement.isPresent()) {
             var measurement = bestMeasurement.get();
@@ -549,22 +570,38 @@ public class VisionSubsystem extends SubsystemBase {
             .orElse(false);
     }
     /**
-     * Check if a camera is connected by verifying fresh frames are still arriving
+     * Check if a camera is connected by verifying fresh frames are still arriving.
+     * BUG-06: Uses FPGA time (same domain as PhotonVision timestamps) instead of wall-clock.
+     * The lastXFpgaTs == -1.0 guard ensures cameras are not reported as connected
+     * before the first frame arrives.
      */
-    private boolean isCameraConnected(PhotonCamera cameraName) {
-        long nowMs = System.currentTimeMillis();
+    private boolean isCameraConnected(PhotonCamera camera) {
+        double nowFpga = Timer.getFPGATimestamp();
 
-        if (cameraName == frontCamera) {
-            return nowMs - lastFrontUpdateMs <= CAMERA_STALE_TIMEOUT_MS;
-        } else if (cameraName == rearCamera) {
-            return nowMs - lastRearUpdateMs <= CAMERA_STALE_TIMEOUT_MS;
+        if (camera == frontCamera) {
+            return lastFrontFpgaTs >= 0
+                && (nowFpga - lastFrontFpgaTs) <= CAMERA_STALE_TIMEOUT_SECONDS;
+        } else if (camera == rearCamera) {
+            return lastRearFpgaTs >= 0
+                && (nowFpga - lastRearFpgaTs) <= CAMERA_STALE_TIMEOUT_SECONDS;
         }
 
         return false;
     }
 
+    /**
+     * Returns true if at least one camera is producing fresh frames.
+     * Used by DriveTrain to auto-enable vision pose fusion (BUG-01).
+     */
+    public boolean isAnyVisionAvailable() {
+        return isCameraConnected(frontCamera) || isCameraConnected(rearCamera);
+    }
+
     @Override
     public void periodic() {
+        // INEFF-01/04: compute once per loop; every caller this cycle reads the cache.
+        cachedMeasurement  = computeBestVisionMeasurement();
+        cachedVisibleTags  = computeVisibleTags();
         updateTelemetry();
     }
 }

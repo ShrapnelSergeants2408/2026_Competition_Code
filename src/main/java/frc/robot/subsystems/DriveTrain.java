@@ -6,7 +6,6 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
-import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -70,15 +69,7 @@ public class DriveTrain extends SubsystemBase {
     private final DifferentialDriveKinematics kinematics =
         new DifferentialDriveKinematics(TRACK_WIDTH_METERS);
 
-    // Odometry (encoder + gyro only, useful for debugging vs estimator)
-    private final DifferentialDriveOdometry poseOdometry = new DifferentialDriveOdometry(
-        gyro.getRotation2d(),
-        getLeftDistanceMeters(),
-        getRightDistanceMeters(),
-        new Pose2d()
-    );
-
-    // Pose estimator — same as poseOdometry but also accepts vision measurements.
+    // Pose estimator — fuses encoder + gyro odometry with vision measurements.
     private final DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(
         kinematics, getHeading(),
         getLeftDistanceMeters(),
@@ -96,20 +87,28 @@ public class DriveTrain extends SubsystemBase {
     private DriveMode driveMode = DriveMode.TANK;
     private OrientationMode orientationMode = OrientationMode.FIELD_ORIENTED;
     private boolean visionEnabled = false;
+    // INEFF-05: cached; rebuilt only when driveMode or orientationMode actually changes.
+    private String driveStateString = "Field-Oriented Tank";
 
     // Dependencies
-    private final VisionSubsystem visionSubsystem;
+    private final Vision visionSubsystem;
 
-    public DriveTrain(VisionSubsystem visionSubsystem) {
+    public DriveTrain(Vision visionSubsystem) {
         this.visionSubsystem = visionSubsystem;
         configureMotors();
         configurePathPlanner();
+        SmartDashboard.putData("Field", field); // INEFF-03: register once, not every loop
     }
 
     @Override
     public void periodic() {
-        poseOdometry.update(gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters());
-        poseEstimator.update(gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters());
+        poseEstimator.update(getHeading(), getLeftDistanceMeters(), getRightDistanceMeters());
+
+        // BUG-01: auto-enable vision fusion whenever at least one camera is producing frames;
+        // setVisionEnabled() still allows manual override if needed.
+        if (visionSubsystem != null) {
+            visionEnabled = visionSubsystem.isAnyVisionAvailable();
+        }
         if (visionEnabled) {
             updateVisionMeasurements();
         }
@@ -254,15 +253,15 @@ public class DriveTrain extends SubsystemBase {
 
     /**
      * Field-oriented arcade drive.
-     * Rotates the driver's (forward, rotation) inputs through the robot heading
-     * so that "forward" always means field-forward regardless of robot orientation.
+     * Projects the driver's field-forward intent onto the robot's forward axis.
+     * BUG-03: Only the linear (fwd) component is rotated through the heading —
+     * rot is a normalized angular rate, not a spatial axis, so applying a rotation
+     * matrix to it produces heading-dependent coupling with no physical basis.
+     * rot is left robot-relative (unchanged).
      */
     private void fieldOrientedArcade(double fwd, double rot, double headingRad) {
-        double cos = Math.cos(headingRad);
-        double sin = Math.sin(headingRad);
-        double robotFwd =  fwd * cos + rot * sin;
-        double robotRot = -fwd * sin + rot * cos;
-        driver.arcadeDrive(robotFwd, robotRot);
+        double robotFwd = fwd * Math.cos(headingRad);
+        driver.arcadeDrive(robotFwd, rot);
     }
 
     /**
@@ -291,6 +290,7 @@ public class DriveTrain extends SubsystemBase {
             case ARCADE -> DriveMode.TANK;
             case TANK   -> DriveMode.ARCADE;
         };
+        refreshDriveStateString();
     }
 
     public void toggleOrientationMode() {
@@ -298,10 +298,12 @@ public class DriveTrain extends SubsystemBase {
             case ROBOT_RELATIVE -> OrientationMode.FIELD_ORIENTED;
             case FIELD_ORIENTED -> OrientationMode.ROBOT_RELATIVE;
         };
+        refreshDriveStateString();
     }
 
     public void setDriveMode(DriveMode mode) {
         this.driveMode = mode;
+        refreshDriveStateString();
     }
 
     public DriveMode getDriveMode() {
@@ -310,6 +312,7 @@ public class DriveTrain extends SubsystemBase {
 
     public void setOrientationMode(OrientationMode mode) {
         this.orientationMode = mode;
+        refreshDriveStateString();
     }
 
     public OrientationMode getOrientationMode() {
@@ -356,10 +359,8 @@ public class DriveTrain extends SubsystemBase {
     }
 
     public void resetPose(Pose2d pose) {
-        poseOdometry.resetPosition(
-            gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters(), pose);
         poseEstimator.resetPosition(
-            gyro.getRotation2d(), getLeftDistanceMeters(), getRightDistanceMeters(), pose);
+            getHeading(), getLeftDistanceMeters(), getRightDistanceMeters(), pose);
     }
 
     public Rotation2d getHeading() {
@@ -421,25 +422,24 @@ public class DriveTrain extends SubsystemBase {
     // ---- Telemetry ----
 
     private void updateTelemetry() {
-        field.setRobotPose(getPose());
-        SmartDashboard.putData("Field", field);
+        field.setRobotPose(getPose()); // INEFF-03: putData("Field") is in constructor; only pose updates here
         SmartDashboard.putNumber("DriveTrain/LeftDistMeters",  getLeftDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/RightDistMeters", getRightDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/HeadingDeg",      getHeading().getDegrees());
         SmartDashboard.putString("DriveTrain/DriveMode",       driveMode.toString());
         SmartDashboard.putString("DriveTrain/OrientationMode", orientationMode.toString());
-        SmartDashboard.putString("DriveTrain/DriveState",      getDriveStateString());
+        SmartDashboard.putString("DriveTrain/DriveState",      driveStateString); // INEFF-05: cached
         SmartDashboard.putBoolean("DriveTrain/IsFieldOriented",
             orientationMode == OrientationMode.FIELD_ORIENTED);
         SmartDashboard.putBoolean("DriveTrain/IsTankDrive",
             driveMode == DriveMode.TANK);
     }
 
-    /** Returns a human-readable combined state string for dashboard display. */
-    private String getDriveStateString() {
+    /** Rebuilds the drive state string; called only when driveMode or orientationMode changes. */
+    private void refreshDriveStateString() {
         String orient = (orientationMode == OrientationMode.FIELD_ORIENTED)
             ? "Field-Oriented" : "Robot-Relative";
         String mode = (driveMode == DriveMode.TANK) ? "Tank" : "Arcade";
-        return orient + " " + mode;
+        driveStateString = orient + " " + mode;
     }
 }

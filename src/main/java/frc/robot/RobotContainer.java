@@ -21,7 +21,7 @@ import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.DriveTrain;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Shooter;
-import frc.robot.subsystems.VisionSubsystem;
+import frc.robot.subsystems.Vision;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -42,7 +42,7 @@ public class RobotContainer {
   private final Shooter shooter = new Shooter(NOMINAL_VOLTAGE);
 
   // Vision subsystem (must be constructed before DriveTrain)
-  private final VisionSubsystem vision = new VisionSubsystem();
+  private final Vision vision = new Vision();
 
   // Drivetrain subsystem
   private final DriveTrain drivetrain = new DriveTrain(vision);
