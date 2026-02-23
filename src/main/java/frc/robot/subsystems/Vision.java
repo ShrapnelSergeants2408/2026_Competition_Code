@@ -44,11 +44,14 @@ public class Vision extends SubsystemBase {
     private double lastFrontFpgaTs    = -1.0; // BUG-06: FPGA-time seconds, not wall-clock ms
     private double lastRearFpgaTs     = -1.0;
     private static final double CAMERA_STALE_TIMEOUT_SECONDS = 0.5;
+    private int telemetryLoopCounter = 0;
 
     // Per-loop caches — computed once in periodic(), read by all callers this cycle.
     // INEFF-01/04/07: prevents cameras from being processed more than once per 20 ms loop.
     private Optional<VisionMeasurement> cachedMeasurement = Optional.empty();
     private List<Integer> cachedVisibleTags = List.of();
+    private Optional<PhotonPipelineResult> cachedFrontResult = Optional.empty();
+    private Optional<PhotonPipelineResult> cachedRearResult = Optional.empty();
 
     public Vision() {
 
@@ -85,14 +88,37 @@ public class Vision extends SubsystemBase {
     }
 
     /**
+     * Returns the best cached vision measurement if it is recent enough.
+     */
+    public Optional<VisionMeasurement> getBestVisionMeasurementIfFresh() {
+        return cachedMeasurement.filter(this::isMeasurementFresh);
+    }
+
+    private boolean isMeasurementFresh(VisionMeasurement measurement) {
+        return (Timer.getFPGATimestamp() - measurement.timestampSeconds())
+            <= VisionConstants.MAX_VISION_AGE_SECONDS;
+    }
+
+    /**
      * Computes the best vision measurement from all cameras.
      * Called exactly once per loop from periodic(); result stored in cachedMeasurement.
      */
     private Optional<VisionMeasurement> computeBestVisionMeasurement() {
-        Optional<VisionMeasurement> frontMeasurement =
-            processCameraResult(frontPoseEstimator, frontCamera, VisionConstants.FRONT_CAMERA_NAME);
-        Optional<VisionMeasurement> rearMeasurement =
-            processCameraResult(rearPoseEstimator, rearCamera, VisionConstants.REAR_CAMERA_NAME);
+        PhotonPipelineResult frontResult = getFrontResult();
+        PhotonPipelineResult rearResult = getRearResult();
+
+        Optional<VisionMeasurement> frontMeasurement = processCameraResult(
+            frontPoseEstimator,
+            frontCamera,
+            frontResult,
+            VisionConstants.FRONT_CAMERA_NAME
+        );
+        Optional<VisionMeasurement> rearMeasurement = processCameraResult(
+            rearPoseEstimator,
+            rearCamera,
+            rearResult,
+            VisionConstants.REAR_CAMERA_NAME
+        );
 
         // If both cameras have measurements, choose the best one
         if (frontMeasurement.isPresent() && rearMeasurement.isPresent()) {
@@ -127,9 +153,9 @@ public class Vision extends SubsystemBase {
     private Optional<VisionMeasurement> processCameraResult(
         PhotonPoseEstimator poseEstimator,
         PhotonCamera camera,
+        PhotonPipelineResult result,
         String cameraName
     ) {
-        var result = camera.getLatestResult();
         updateCameraFreshness(camera, result);
 
 
@@ -281,13 +307,21 @@ public class Vision extends SubsystemBase {
         return totalDistance / validTagCount;
     }
 
+    private PhotonPipelineResult getFrontResult() {
+        return cachedFrontResult.orElseGet(frontCamera::getLatestResult);
+    }
+
+    private PhotonPipelineResult getRearResult() {
+        return cachedRearResult.orElseGet(rearCamera::getLatestResult);
+    }
+
     /**
      * Get the best target from all cameras (highest confidence/lowest ambiguity).
      */
     
     public Optional<PhotonTrackedTarget> getBestTarget() {
-        var frontResult = frontCamera.getLatestResult();
-        var rearResult = rearCamera.getLatestResult();
+        var frontResult = getFrontResult();
+        var rearResult = getRearResult();
 
         PhotonTrackedTarget bestTarget = null;
         double lowestAmbiguity = Double.MAX_VALUE;
@@ -334,12 +368,12 @@ public class Vision extends SubsystemBase {
     private List<Integer> computeVisibleTags() {
         List<Integer> visibleTags = new ArrayList<>();
 
-        var frontResult = frontCamera.getLatestResult();
+        var frontResult = getFrontResult();
         if (frontResult.hasTargets()) {
             frontResult.getTargets().forEach(target -> visibleTags.add(target.getFiducialId()));
         }
 
-        var rearResult = rearCamera.getLatestResult();
+        var rearResult = getRearResult();
         if (rearResult.hasTargets()) {
             rearResult.getTargets().forEach(target -> {
                 if (!visibleTags.contains(target.getFiducialId())) {
@@ -491,64 +525,56 @@ public class Vision extends SubsystemBase {
             SmartDashboard.putNumber("Vision/BestPoseTheta", pose.getRotation().getDegrees());
             SmartDashboard.putNumber("Vision/NumTagsUsed", measurement.numTagsUsed());
             SmartDashboard.putNumber("Vision/AvgTagDistance", measurement.averageDistance());
+
+            getDistanceToPose(VisionConstants.HUB_POSE, bestMeasurement)
+                .ifPresent(distance -> SmartDashboard.putNumber("Vision/HubDistance", distance));
+            SmartDashboard.putBoolean("Vision/HubAligned",
+                isAlignedWithTarget(VisionConstants.HUB_POSE, 2.0, bestMeasurement));
+
+            getDistanceToPose(VisionConstants.HP_STATION_POSE, bestMeasurement)
+                .ifPresent(distance -> SmartDashboard.putNumber("Vision/HPStationDistance", distance));
+            SmartDashboard.putBoolean("Vision/HPStationAligned",
+                isAlignedWithTarget(VisionConstants.HP_STATION_POSE, 2.0, bestMeasurement));
+
+            getDistanceToPose(VisionConstants.TRENCH_POSE, bestMeasurement)
+                .ifPresent(distance -> SmartDashboard.putNumber("Vision/TrenchDistance", distance));
+            SmartDashboard.putBoolean("Vision/TrenchAligned",
+                isAlignedWithTarget(VisionConstants.TRENCH_POSE, 2.0, bestMeasurement));
+
+            getDistanceToPose(VisionConstants.DEPOT_POSE, bestMeasurement)
+                .ifPresent(distance -> SmartDashboard.putNumber("Vision/DepotDistance", distance));
+            SmartDashboard.putBoolean("Vision/DepotAligned",
+                isAlignedWithTarget(VisionConstants.DEPOT_POSE, 2.0, bestMeasurement));
+
+            getDistanceToPose(VisionConstants.OUTPOST_POSE, bestMeasurement)
+                .ifPresent(distance -> SmartDashboard.putNumber("Vision/OutpostDistance", distance));
+            SmartDashboard.putBoolean("Vision/OutpostAligned",
+                isAlignedWithTarget(VisionConstants.OUTPOST_POSE, 2.0, bestMeasurement));
+
+            getDistanceToPose(VisionConstants.TOWER_POSE, bestMeasurement)
+                .ifPresent(distance -> SmartDashboard.putNumber("Vision/TowerDistance", distance));
+            SmartDashboard.putBoolean("Vision/TowerAligned",
+                isAlignedWithTarget(VisionConstants.TOWER_POSE, 2.0, bestMeasurement));
         } else {
             SmartDashboard.putNumber("Vision/BestPoseX", 0.0);
             SmartDashboard.putNumber("Vision/BestPoseY", 0.0);
             SmartDashboard.putNumber("Vision/BestPoseTheta", 0.0);
             SmartDashboard.putNumber("Vision/NumTagsUsed", 0);
             SmartDashboard.putNumber("Vision/AvgTagDistance", 0.0);
+
+            SmartDashboard.putNumber("Vision/HubDistance", Double.NaN);
+            SmartDashboard.putBoolean("Vision/HubAligned", false);
+            SmartDashboard.putNumber("Vision/HPStationDistance", Double.NaN);
+            SmartDashboard.putBoolean("Vision/HPStationAligned", false);
+            SmartDashboard.putNumber("Vision/TrenchDistance", Double.NaN);
+            SmartDashboard.putBoolean("Vision/TrenchAligned", false);
+            SmartDashboard.putNumber("Vision/DepotDistance", Double.NaN);
+            SmartDashboard.putBoolean("Vision/DepotAligned", false);
+            SmartDashboard.putNumber("Vision/OutpostDistance", Double.NaN);
+            SmartDashboard.putBoolean("Vision/OutpostAligned", false);
+            SmartDashboard.putNumber("Vision/TowerDistance", Double.NaN);
+            SmartDashboard.putBoolean("Vision/TowerAligned", false);
         }
-
-        // Hub distance and alignment
-        getDistanceToPose(VisionConstants.HUB_POSE, bestMeasurement)
-            .ifPresent(distance -> SmartDashboard.putNumber("Vision/HubDistance", distance)
-            );
-        SmartDashboard.putBoolean("Vision/HubAligned", 
-            isAlignedWithTarget(VisionConstants.HUB_POSE, 2.0, bestMeasurement)
-            );
-
-
-        // HP Station distance and alignment
-        getDistanceToPose(VisionConstants.HP_STATION_POSE, bestMeasurement)
-            .ifPresent(distance -> SmartDashboard.putNumber("Vision/HPStationDistance", distance)
-            );
-        SmartDashboard.putBoolean("Vision/HPStationAligned", 
-            isAlignedWithTarget(VisionConstants.HP_STATION_POSE, 2.0, bestMeasurement)
-            );
-
-        // Trench distance and alignment
-        getDistanceToPose(VisionConstants.TRENCH_POSE, bestMeasurement)
-            .ifPresent(distance -> SmartDashboard.putNumber("Vision/TrenchDistance", distance)
-            );
-        SmartDashboard.putBoolean("Vision/TrenchAligned", 
-            isAlignedWithTarget(VisionConstants.TRENCH_POSE, 2.0, bestMeasurement)
-            );
-
-
-        // Depot distance and alignment
-        getDistanceToPose(VisionConstants.DEPOT_POSE, bestMeasurement)
-            .ifPresent(distance -> SmartDashboard.putNumber("Vision/DepotDistance", distance)
-            );
-        SmartDashboard.putBoolean("Vision/DepotAligned", 
-            isAlignedWithTarget(VisionConstants.DEPOT_POSE, 2.0, bestMeasurement)
-            );
-
-        // Outpost distance and alignment
-        getDistanceToPose(VisionConstants.OUTPOST_POSE, bestMeasurement)
-            .ifPresent(distance -> SmartDashboard.putNumber("Vision/OutpostDistance", distance)
-            );
-        SmartDashboard.putBoolean("Vision/OutpostAligned", 
-            isAlignedWithTarget(VisionConstants.OUTPOST_POSE, 2.0, bestMeasurement)
-            );
-
-        // Tower distance and alignment
-        getDistanceToPose(VisionConstants.TOWER_POSE, bestMeasurement)
-            .ifPresent(distance -> SmartDashboard.putNumber("Vision/TowerDistance", distance)
-            );
-        SmartDashboard.putBoolean("Vision/TowerAligned", 
-            isAlignedWithTarget(VisionConstants.TOWER_POSE, 2.0, bestMeasurement)
-            );
-
 
     }
 
@@ -599,9 +625,15 @@ public class Vision extends SubsystemBase {
 
     @Override
     public void periodic() {
+        cachedFrontResult = Optional.of(frontCamera.getLatestResult());
+        cachedRearResult = Optional.of(rearCamera.getLatestResult());
+
         // INEFF-01/04: compute once per loop; every caller this cycle reads the cache.
         cachedMeasurement  = computeBestVisionMeasurement();
         cachedVisibleTags  = computeVisibleTags();
-        updateTelemetry();
+        if (++telemetryLoopCounter >= VisionConstants.TELEMETRY_PERIOD_LOOPS) {
+            telemetryLoopCounter = 0;
+            updateTelemetry();
+        }
     }
 }

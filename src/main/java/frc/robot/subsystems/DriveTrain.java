@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -81,7 +82,15 @@ public class DriveTrain extends SubsystemBase {
 
     // PathPlanner
     private RobotConfig robotConfig;
-    private final PPLTVController ltvController = new PPLTVController(0.02);
+    private PPLTVController ltvController;
+    private static final String PPLTV_PREFIX = "DriveTrain/PPLTV/";
+    private double lastQx = PPLTV_Q_X;
+    private double lastQy = PPLTV_Q_Y;
+    private double lastQtheta = PPLTV_Q_THETA;
+    private double lastRvel = PPLTV_R_VEL;
+    private double lastRomega = PPLTV_R_OMEGA;
+    private double lastDt = PPLTV_DT;
+    private double lastMaxVelocity = PPLTV_MAX_VELOCITY;
 
     // State — defaults to field-oriented tank per driver preference
     private DriveMode driveMode = DriveMode.TANK;
@@ -93,9 +102,12 @@ public class DriveTrain extends SubsystemBase {
     // Dependencies
     private final Vision visionSubsystem;
 
+    private int telemetryLoopCounter = 0;
+
     public DriveTrain(Vision visionSubsystem) {
         this.visionSubsystem = visionSubsystem;
         configureMotors();
+        initLtvTuning();
         configurePathPlanner();
         SmartDashboard.putData("Field", field); // INEFF-03: register once, not every loop
     }
@@ -104,15 +116,17 @@ public class DriveTrain extends SubsystemBase {
     public void periodic() {
         poseEstimator.update(getHeading(), getLeftDistanceMeters(), getRightDistanceMeters());
 
-        // BUG-01: auto-enable vision fusion whenever at least one camera is producing frames;
-        // setVisionEnabled() still allows manual override if needed.
         if (visionSubsystem != null) {
             visionEnabled = visionSubsystem.isAnyVisionAvailable();
         }
         if (visionEnabled) {
             updateVisionMeasurements();
         }
-        updateTelemetry();
+        refreshLtvControllerFromDashboard();
+        if (++telemetryLoopCounter >= TELEMETRY_PERIOD_LOOPS) {
+            telemetryLoopCounter = 0;
+            updateTelemetry();
+        }
     }
 
     // ---- Motor Configuration ----
@@ -183,6 +197,78 @@ public class DriveTrain extends SubsystemBase {
         }
     }
 
+    private void initLtvTuning() {
+        SmartDashboard.putNumber(PPLTV_PREFIX + "Qx", PPLTV_Q_X);
+        SmartDashboard.putNumber(PPLTV_PREFIX + "Qy", PPLTV_Q_Y);
+        SmartDashboard.putNumber(PPLTV_PREFIX + "Qtheta", PPLTV_Q_THETA);
+        SmartDashboard.putNumber(PPLTV_PREFIX + "Rvel", PPLTV_R_VEL);
+        SmartDashboard.putNumber(PPLTV_PREFIX + "Romega", PPLTV_R_OMEGA);
+        SmartDashboard.putNumber(PPLTV_PREFIX + "Dt", PPLTV_DT);
+        SmartDashboard.putNumber(PPLTV_PREFIX + "MaxVelocity", PPLTV_MAX_VELOCITY);
+        rebuildLtvControllerFromDashboard();
+    }
+
+    private void refreshLtvControllerFromDashboard() {
+        if (!DriverStation.isTest()) {
+            return;
+        }
+
+        double qx = SmartDashboard.getNumber(PPLTV_PREFIX + "Qx", PPLTV_Q_X);
+        double qy = SmartDashboard.getNumber(PPLTV_PREFIX + "Qy", PPLTV_Q_Y);
+        double qtheta = SmartDashboard.getNumber(PPLTV_PREFIX + "Qtheta", PPLTV_Q_THETA);
+        double rvel = SmartDashboard.getNumber(PPLTV_PREFIX + "Rvel", PPLTV_R_VEL);
+        double romega = SmartDashboard.getNumber(PPLTV_PREFIX + "Romega", PPLTV_R_OMEGA);
+        double dt = SmartDashboard.getNumber(PPLTV_PREFIX + "Dt", PPLTV_DT);
+        double maxVel = SmartDashboard.getNumber(PPLTV_PREFIX + "MaxVelocity", PPLTV_MAX_VELOCITY);
+
+        if (qx != lastQx || qy != lastQy || qtheta != lastQtheta
+            || rvel != lastRvel || romega != lastRomega
+            || dt != lastDt || maxVel != lastMaxVelocity) {
+            rebuildLtvController(qx, qy, qtheta, rvel, romega, dt, maxVel);
+            configurePathPlanner();
+        }
+    }
+
+    private void rebuildLtvControllerFromDashboard() {
+        rebuildLtvController(
+            SmartDashboard.getNumber(PPLTV_PREFIX + "Qx", PPLTV_Q_X),
+            SmartDashboard.getNumber(PPLTV_PREFIX + "Qy", PPLTV_Q_Y),
+            SmartDashboard.getNumber(PPLTV_PREFIX + "Qtheta", PPLTV_Q_THETA),
+            SmartDashboard.getNumber(PPLTV_PREFIX + "Rvel", PPLTV_R_VEL),
+            SmartDashboard.getNumber(PPLTV_PREFIX + "Romega", PPLTV_R_OMEGA),
+            SmartDashboard.getNumber(PPLTV_PREFIX + "Dt", PPLTV_DT),
+            SmartDashboard.getNumber(PPLTV_PREFIX + "MaxVelocity", PPLTV_MAX_VELOCITY)
+        );
+    }
+
+    private void rebuildLtvController(
+        double qx,
+        double qy,
+        double qtheta,
+        double rvel,
+        double romega,
+        double dt,
+        double maxVelocity
+    ) {
+        if (dt <= 0 || maxVelocity <= 0) {
+            DriverStation.reportError("Invalid PPLTV tuning values (dt/maxVelocity)", false);
+            return;
+        }
+        ltvController = new PPLTVController(
+            VecBuilder.fill(qx, qy, qtheta),
+            VecBuilder.fill(rvel, romega),
+            dt,
+            maxVelocity
+        );
+        lastQx = qx;
+        lastQy = qy;
+        lastQtheta = qtheta;
+        lastRvel = rvel;
+        lastRomega = romega;
+        lastDt = dt;
+        lastMaxVelocity = maxVelocity;
+    }
+
     // ---- Pose Initialization ----
 
     /**
@@ -194,7 +280,8 @@ public class DriveTrain extends SubsystemBase {
 
         // Use vision if it can see AprilTags right now
         if (visionSubsystem != null) {
-            Optional<VisionMeasurement> visionMeasurement = visionSubsystem.getBestVisionMeasurement();
+            Optional<VisionMeasurement> visionMeasurement =
+                visionSubsystem.getBestVisionMeasurementIfFresh();
             if (visionMeasurement.isPresent()) {
                 initialPose = visionMeasurement.get().estimatedPose();
             }
@@ -272,11 +359,8 @@ public class DriveTrain extends SubsystemBase {
     private void fieldOrientedTank(double left, double right, double headingRad) {
         double fwd  = (left + right) / 2.0;
         double turn = (right - left) / 2.0;
-        double cos = Math.cos(headingRad);
-        double sin = Math.sin(headingRad);
-        double robotFwd  =  fwd * cos + turn * sin;
-        double robotTurn = -fwd * sin + turn * cos;
-        driver.tankDrive(robotFwd - robotTurn, robotFwd + robotTurn);
+        double robotFwd = fwd * Math.cos(headingRad);
+        driver.tankDrive(robotFwd - turn, robotFwd + turn);
     }
 
     public void stop() {
@@ -393,7 +477,7 @@ public class DriveTrain extends SubsystemBase {
 
     private void updateVisionMeasurements() {
         if (visionSubsystem == null) return;
-        visionSubsystem.getBestVisionMeasurement().ifPresent(measurement ->
+        visionSubsystem.getBestVisionMeasurementIfFresh().ifPresent(measurement ->
             poseEstimator.addVisionMeasurement(
                 measurement.estimatedPose(),
                 measurement.timestampSeconds(),
@@ -404,13 +488,8 @@ public class DriveTrain extends SubsystemBase {
 
     public Optional<Pose2d> getVisionSeededPose() {
         if (visionSubsystem == null) return Optional.empty();
-        return visionSubsystem.getBestVisionMeasurement()
+        return visionSubsystem.getBestVisionMeasurementIfFresh()
             .map(VisionMeasurement::estimatedPose);
-    }
-
-    public boolean setVisionEnabled(boolean enabled) {
-        this.visionEnabled = enabled;
-        return enabled;
     }
 
     // ---- PathPlanner Auto ----

@@ -45,6 +45,7 @@ public final class Constants {
 
         // Driving
         public static final double JOYSTICK_DEADBAND = 0.05;
+        public static final int TELEMETRY_PERIOD_LOOPS = 5;
 
         // Physical dimensions
         public static final double GEAR_RATIO = 8.46;
@@ -66,6 +67,13 @@ public final class Constants {
         public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
         public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
         public static final double NOMINAL_VOLTAGE = 12;
+
+        // PID tuning (defaults are intentionally conservative)
+        public static final double SHOOTER_KP = 0.0;
+        public static final double SHOOTER_KI = 0.0;
+        public static final double SHOOTER_KD = 0.0;
+        public static final double SHOOTER_TARGET_RPM = 3000.0;
+        public static final boolean SHOOTER_USE_PID = false;
     }
 
     public static class Auto {
@@ -74,6 +82,15 @@ public final class Constants {
         public static final double MAX_ACCELERATION = 2.0; // m/s^2
         public static final double MAX_ANGULAR_VELOCITY = 540.0; // deg/s
         public static final double MAX_ANGULAR_ACCELERATION = 720.0; // deg/s^2
+
+        // PPLTVController tuning (state tolerances and control effort limits)
+        public static final double PPLTV_DT = 0.02;
+        public static final double PPLTV_MAX_VELOCITY = 9.0;
+        public static final double PPLTV_Q_X = 0.0625;
+        public static final double PPLTV_Q_Y = 0.125;
+        public static final double PPLTV_Q_THETA = 2.0;
+        public static final double PPLTV_R_VEL = 1.0;
+        public static final double PPLTV_R_OMEGA = 2.0;
     }
 
     public static class VisionConstants {
@@ -107,6 +124,8 @@ public final class Constants {
         public static final double MAX_TAG_DISTANCE_METERS = 4.0; // TODO: Tune based on camera performance
         public static final double MAX_AMBIGUITY = 0.3; // TODO: Tune based on field testing
         public static final int MIN_TAGS_FOR_MULTI_TAG = 2;
+        public static final double MAX_VISION_AGE_SECONDS = 0.5;
+        public static final int TELEMETRY_PERIOD_LOOPS = 5;
 
         // Standard deviations for pose estimation (meters and radians)
         // Single tag close (< 2m)
