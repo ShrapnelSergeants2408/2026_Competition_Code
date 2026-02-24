@@ -174,8 +174,21 @@ public final class Constants {
         public static final Matrix<N3, N1> MULTI_TAG_STDDEVS =
             VecBuilder.fill(0.2, 0.2, Math.toRadians(5)); // TODO: Tune based on testing
 
-        // Known field element poses (2026 field - update based on actual game)
-        public static final Pose2d HUB_POSE = new Pose2d(8.27, 4.1, new Rotation2d()); // TODO: Update with actual 2026 game positions
+        // Hub positions derived from the 2026-rebuilt-welded AprilTag layout.
+        // Blue hub core tags (18-21, 24-27) span X=4.02–5.23, Y=3.43–4.64 → center ≈ (4.63, 4.03)
+        // Red  hub core tags ( 2- 5,  8-11) span X=11.31–12.52, Y=3.43–4.64 → center ≈ (11.92, 4.03)
+        public static final Pose2d BLUE_HUB_POSE = new Pose2d(4.63, 4.03, new Rotation2d());
+        public static final Pose2d RED_HUB_POSE  = new Pose2d(11.92, 4.03, new Rotation2d());
+
+        // Field zone boundaries (X-axis, meters).
+        // Field runs X=0 (blue DS wall) → X=16.541 (red DS wall).
+        // Offensive zone for each alliance = between their driver station and their hub.
+        //   Blue offensive:  X ≤ BLUE_OFFENSIVE_MAX_X  (hub far edge from blue DS ≈ 5.2 m)
+        //   Red  offensive:  X ≥ RED_OFFENSIVE_MIN_X   (hub far edge from red  DS ≈ 11.3 m)
+        // Outside these bounds = neutral zone or opponent defensive zone — shooter must not spin.
+        public static final double BLUE_OFFENSIVE_MAX_X = 5.2;  // m — blue hub outer edge toward center
+        public static final double RED_OFFENSIVE_MIN_X  = 11.3; // m — red  hub outer edge toward center
+
         public static final Pose2d HP_STATION_POSE = new Pose2d(1.5, 7.5, Rotation2d.fromDegrees(180)); // TODO: Update with actual 2026 game positions
         public static final Pose2d TRENCH_POSE = new Pose2d(2.5, 2.0, Rotation2d.fromDegrees(0)); // TODO: Update with actual 2026 game positions
         public static final Pose2d DEPOT_POSE = new Pose2d(14.0, 2.0, Rotation2d.fromDegrees(180)); // TODO: Update with actual 2026 game positions

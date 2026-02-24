@@ -2,6 +2,10 @@ package frc.robot.subsystems;
 
 import static frc.robot.Constants.SensorConstants.*;
 import static frc.robot.Constants.ShooterConstants.*;
+import static frc.robot.Constants.VisionConstants.*;
+
+import edu.wpi.first.math.geometry.Pose2d;
+import frc.robot.VisionMeasurement;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
@@ -52,8 +56,19 @@ public class Shooter extends SubsystemBase {
     private final Timer jamReverseTimer = new Timer();
     private ShooterState stateBeforeJam = ShooterState.IDLE;
 
+    // ── Distance resolution ───────────────────────────────────────────────────
+    private final Vision vision;
+    private final DriveTrain drivetrain;
+    private boolean povPresetSet = false;
+    private double povPresetDistanceFt = 10.0;     // distance explicitly staged by POV buttons
+    private String distanceSource = "Default";     // which priority tier is active
+    private double visionDistanceFt = -1.0;        // last vision-computed distance (-1 = not available)
+    private double odometryDistanceFt = -1.0;      // last odometry-computed distance (-1 = not available)
+
     // ── Constructor ───────────────────────────────────────────────────────────
-    public Shooter() {
+    public Shooter(Vision vision, DriveTrain drivetrain) {
+        this.vision = vision;
+        this.drivetrain = drivetrain;
         // TalonFX shooter — Phoenix 6 on-controller velocity PID, slot 0
         shooterMotor = new TalonFX(SHOOTER_MOTOR_ID);
         TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
@@ -146,14 +161,126 @@ public class Shooter extends SubsystemBase {
     /**
      * Pre-set the distance/RPM target without spinning the motor.
      * Use with POV buttons so the operator can stage the shot before pressing shoot.
+     * Marks povPresetSet = true so resolveShooterDistance() uses this value as priority 3.
      */
     public void setDistancePreset(double distanceFeet) {
+        povPresetDistanceFt = distanceFeet;
         currentTargetDistance = distanceFeet;
         targetRPM = getRPMFromDistance(distanceFeet);
+        povPresetSet = true;
     }
 
     public double getTargetDistance() {
         return currentTargetDistance;
+    }
+
+    // ── Zone logic and distance resolution ───────────────────────────────────
+
+    /**
+     * Returns the hub pose for the current alliance (defaults to blue if alliance unknown).
+     * Coordinates are derived from the 2026-rebuilt-welded AprilTag layout JSON.
+     */
+    private Pose2d getAllianceHubPose() {
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+            return RED_HUB_POSE;
+        }
+        return BLUE_HUB_POSE;
+    }
+
+    /**
+     * Returns true if the given robot pose is within the offensive zone for the current alliance.
+     * Blue offensive zone: X ≤ BLUE_OFFENSIVE_MAX_X (between blue DS and blue hub).
+     * Red  offensive zone: X ≥ RED_OFFENSIVE_MIN_X  (between red  DS and red  hub).
+     * Returns false when alliance is unknown (prevents accidental spin-up during setup).
+     */
+    private boolean isInOffensiveZone(Pose2d pose) {
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isEmpty()) return false;
+        return alliance.get() == DriverStation.Alliance.Blue
+            ? pose.getX() <= BLUE_OFFENSIVE_MAX_X
+            : pose.getX() >= RED_OFFENSIVE_MIN_X;
+    }
+
+    /**
+     * Returns true when the shooter is permitted to spin up.
+     * In test mode this is always true (manual bench/pit testing from any field position).
+     * Otherwise the robot must be in the offensive zone.
+     */
+    private boolean canSpinShooter() {
+        if (DriverStation.isTest()) return true;
+
+        // Prefer the freshest available pose for zone determination.
+        if (vision != null) {
+            var freshMeasurement = vision.getBestVisionMeasurementIfFresh();
+            if (freshMeasurement.isPresent()) {
+                return isInOffensiveZone(freshMeasurement.get().estimatedPose());
+            }
+        }
+        if (drivetrain != null) {
+            return isInOffensiveZone(drivetrain.getPose());
+        }
+        return false; // no pose → don't spin
+    }
+
+    /**
+     * Resolve the best available shooting distance (feet) using a four-tier priority:
+     *   1. Vision pose (fresh AprilTag measurement) — only when in offensive zone or test mode.
+     *   2. Odometry pose (drivetrain encoder + gyro) — only when in offensive zone or test mode.
+     *   3. POV preset — explicitly set by the operator via D-pad.
+     *   4. Default 10 ft.
+     *
+     * Updates currentTargetDistance, targetRPM, distanceSource, and the diagnostic fields
+     * visionDistanceFt / odometryDistanceFt as a side effect.
+     *
+     * @return resolved distance in feet
+     */
+    private double resolveShooterDistance() {
+        boolean testMode = DriverStation.isTest();
+        Pose2d hubPose = getAllianceHubPose();
+
+        // ── Priority 1: Vision ─────────────────────────────────────────────
+        if (vision != null) {
+            var freshMeasurement = vision.getBestVisionMeasurementIfFresh();
+            if (freshMeasurement.isPresent()) {
+                Pose2d visionPose = freshMeasurement.get().estimatedPose();
+                if (testMode || isInOffensiveZone(visionPose)) {
+                    double meters = visionPose.getTranslation().getDistance(hubPose.getTranslation());
+                    visionDistanceFt = meters / 0.3048;
+                    currentTargetDistance = visionDistanceFt;
+                    targetRPM = getRPMFromDistance(visionDistanceFt);
+                    distanceSource = "Vision";
+                    return visionDistanceFt;
+                }
+            }
+        }
+
+        // ── Priority 2: Odometry ───────────────────────────────────────────
+        if (drivetrain != null) {
+            Pose2d robotPose = drivetrain.getPose();
+            if (testMode || isInOffensiveZone(robotPose)) {
+                double meters = robotPose.getTranslation().getDistance(hubPose.getTranslation());
+                odometryDistanceFt = meters / 0.3048;
+                currentTargetDistance = odometryDistanceFt;
+                targetRPM = getRPMFromDistance(odometryDistanceFt);
+                distanceSource = "Odometry";
+                return odometryDistanceFt;
+            }
+        }
+
+        // ── Priority 3: POV preset ─────────────────────────────────────────
+        if (povPresetSet) {
+            currentTargetDistance = povPresetDistanceFt;
+            targetRPM = getRPMFromDistance(povPresetDistanceFt);
+            distanceSource = "POV Preset";
+            return povPresetDistanceFt;
+        }
+
+        // ── Priority 4: Default 10 ft ──────────────────────────────────────
+        currentTargetDistance = 10.0;
+        targetRPM = getRPMFromDistance(10.0);
+        distanceSource = "Default";
+        return 10.0;
     }
 
     // ── Feeder/intake control (private — exposed via commands) ────────────────
@@ -239,15 +366,25 @@ public class Shooter extends SubsystemBase {
     // ── Commands ──────────────────────────────────────────────────────────────
 
     /**
-     * Spin up to target RPM, then feed automatically when ready.
-     * Shooter coasts and feeder stops when the command ends (button released).
+     * Spin up to distance-resolved RPM, then feed automatically when at speed.
+     * Shooter and feeder stop when the command ends (button released).
+     * Zone-locked: does nothing outside the offensive zone unless in test mode.
      */
     public Command shootCommand() {
         return Commands.run(() -> {
+            if (!canSpinShooter()) {
+                stopShooter();
+                stopFeeder();
+                currentState = ShooterState.IDLE;
+                return;
+            }
             if (currentState == ShooterState.IDLE) {
                 currentState = ShooterState.SPIN_UP;
-                setTargetRPM(targetRPM);
             }
+            // Continuously re-resolve distance so RPM tracks robot position.
+            resolveShooterDistance();
+            shooterMotor.setControl(velocityRequest.withVelocity(targetRPM / 60.0));
+
             if (currentState == ShooterState.SPIN_UP && canShoot()) {
                 currentState = ShooterState.FEED;
                 runFeeder(FEEDER_SPEED);
@@ -305,6 +442,28 @@ public class Shooter extends SubsystemBase {
         );
     }
 
+    /**
+     * Spin the shooter wheel to the distance-resolved RPM (toggle — no feed).
+     * Continuously updates RPM as robot position changes.
+     * Zone-locked: motor stays off outside the offensive zone unless in test mode.
+     * Bind with toggleOnTrue() so first press starts, second press stops.
+     */
+    public Command spinUpCommand() {
+        return Commands.run(() -> {
+            if (!canSpinShooter()) {
+                stopShooter();
+                currentState = ShooterState.IDLE;
+                return;
+            }
+            currentState = ShooterState.SPIN_UP;
+            resolveShooterDistance();
+            shooterMotor.setControl(velocityRequest.withVelocity(targetRPM / 60.0));
+        }, this).finallyDo(interrupted -> {
+            stopShooter();
+            currentState = ShooterState.IDLE;
+        });
+    }
+
     /** Immediately stop shooter and feeder and return to idle. */
     public Command stopAllCommand() {
         return Commands.runOnce(() -> {
@@ -336,16 +495,36 @@ public class Shooter extends SubsystemBase {
     }
 
     private void logTelemetry() {
-        SmartDashboard.putNumber("Shooter/Current RPM", getCurrentRPM());
-        SmartDashboard.putNumber("Shooter/Target RPM", targetRPM);
-        SmartDashboard.putNumber("Shooter/Target Distance (ft)", currentTargetDistance);
+        double currentRPM = getCurrentRPM();
+        boolean atSpeed    = isAtTargetSpeed();
+        boolean inZone     = canSpinShooter();
+
+        // ── Shooter wheel ──────────────────────────────────────────────────
+        SmartDashboard.putNumber("Shooter/Current RPM",          currentRPM);
+        SmartDashboard.putNumber("Shooter/Target RPM",           targetRPM);
+        SmartDashboard.putBoolean("Shooter/RPM At Speed",        atSpeed);   // green = ready, red = not
+        SmartDashboard.putBoolean("Shooter/Can Shoot",           canShoot());
         SmartDashboard.putNumber("Shooter/Motor Current (A)",
             shooterMotor.getSupplyCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("Feeder/Motor Current (A)", feederMotor.getOutputCurrent());
-        SmartDashboard.putBoolean("Shooter/At Target Speed", isAtTargetSpeed());
-        SmartDashboard.putBoolean("Shooter/Ball Detected", hasBall());
-        SmartDashboard.putBoolean("Shooter/Can Shoot", canShoot());
-        SmartDashboard.putBoolean("Feeder/Jam Clearing", currentState == ShooterState.JAM_CLEAR);
-        SmartDashboard.putString("Shooter/State", currentState.name());
+
+        // ── Distance resolution ────────────────────────────────────────────
+        SmartDashboard.putNumber("Shooter/Active Distance (ft)",  currentTargetDistance);
+        SmartDashboard.putNumber("Shooter/POV Preset Distance (ft)", povPresetDistanceFt);
+        SmartDashboard.putNumber("Shooter/Vision Distance (ft)",  visionDistanceFt);       // -1 = not available
+        SmartDashboard.putNumber("Shooter/Odometry Distance (ft)", odometryDistanceFt);    // -1 = not available
+        SmartDashboard.putString("Shooter/Distance Source",       distanceSource);
+
+        // ── Zone status ────────────────────────────────────────────────────
+        SmartDashboard.putBoolean("Shooter/In Offensive Zone",   inZone);
+
+        // ── Feeder / intake ────────────────────────────────────────────────
+        SmartDashboard.putBoolean("Shooter/Intake Active",       currentState == ShooterState.INTAKE);
+        SmartDashboard.putBoolean("Shooter/Eject Active",        currentState == ShooterState.EJECT);
+        SmartDashboard.putNumber("Feeder/Motor Current (A)",     feederMotor.getOutputCurrent());
+        SmartDashboard.putBoolean("Feeder/Jam Clearing",         currentState == ShooterState.JAM_CLEAR);
+
+        // ── General state ──────────────────────────────────────────────────
+        SmartDashboard.putBoolean("Shooter/Ball Detected",       hasBall());
+        SmartDashboard.putString("Shooter/State",                currentState.name());
     }
 }

@@ -34,14 +34,14 @@ public class RobotContainer {
   // Climber subsystem
   private final Climber climber = new Climber();
 
-  // Shooter subsystem (unified — owns shooter wheel, feeder, and intake)
-  private final Shooter shooter = new Shooter();
-
-  // Vision subsystem (must be constructed before DriveTrain)
+  // Vision must be constructed before DriveTrain (passed into its constructor).
+  // DriveTrain must be constructed before Shooter (both are injected into Shooter).
   private final Vision vision = new Vision();
-
-  // Drivetrain subsystem
   private final DriveTrain drivetrain = new DriveTrain(vision);
+
+  // Shooter subsystem (unified — owns shooter wheel, feeder, and intake).
+  // Receives vision and drivetrain for live distance resolution and zone enforcement.
+  private final Shooter shooter = new Shooter(vision, drivetrain);
 
   // Driver camera (USB webcam) — may be null if no camera is present at startup.
   private final UsbCamera driverCamera;
@@ -104,49 +104,54 @@ public class RobotContainer {
    *   Back  = toggle Tank / Arcade drive mode
    *   Start = toggle Field-Oriented / Robot-Relative orientation
    *
-   * Operator (port 1) — all intake and shooting operations:
-   *   X        = shoot (spin up + feed when ready, hold)
-   *   B        = stop all (shooter + feeder)
-   *   Y        = manual feed (bypasses speed gate, hold)
-   *   RT       = feed-when-ready (hold — requires shooter at speed)
-   *   LT       = intake (draw ball in, hold)
-   *   LB       = eject (reverse feeder, hold)
-   *   POV Up   = distance preset 15 ft
-   *   POV Down = distance preset 10 ft
-   *   POV Left = distance preset  7.5 ft
-   *   POV Right= distance preset 12.5 ft
+   * Operator (port 1) — intake and shooting:
+   *   Y        = toggle shooter spin-up to distance-resolved RPM (zone-locked outside offensive zone)
+   *   X        = shoot: spin up + auto-feed when at speed (hold; zone-locked)
+   *   RB       = feed if shooter is at speed (hold)
+   *   B        = stop all — immediately stops shooter and feeder
+   *   LB       = toggle intake (draw ball in; dashboard indicator)
+   *   LT       = toggle eject (reverse feeder to expel ball)
+   *   POV Up   = stage distance preset 15.0 ft (no spin-up)
+   *   POV Down = stage distance preset 10.0 ft
+   *   POV Left = stage distance preset  7.5 ft
+   *   POV Right= stage distance preset 12.5 ft
+   *
+   * Zone enforcement: shooter spin-up is blocked outside the offensive zone in
+   * teleop/auto. Test mode bypasses the zone lock for bench and pit testing.
    */
   private void configureBindings() {
     // ── Driver ────────────────────────────────────────────────────────────────
-    // Back (select): toggle Tank <-> Arcade
     m_driverController.back().onTrue(
         Commands.runOnce(() -> drivetrain.toggleDriveMode(), drivetrain)
     );
-    // Start (menu): toggle Field-Oriented <-> Robot-Relative
     m_driverController.start().onTrue(
         Commands.runOnce(() -> drivetrain.toggleOrientationMode(), drivetrain)
     );
 
     // ── Operator ──────────────────────────────────────────────────────────────
-    // X: spin up to target RPM and feed automatically when ready
+
+    // Y: toggle shooter spin-up to distance-resolved RPM — no feeding, just spin.
+    // First press starts spinning; second press stops. Zone-locked outside offensive zone.
+    m_operatorController.y().toggleOnTrue(shooter.spinUpCommand());
+
+    // X: full shoot sequence — spin up then auto-feed when at speed. Hold to shoot.
     m_operatorController.x().whileTrue(shooter.shootCommand());
 
-    // B: immediately stop shooter and feeder
+    // RB: feed only if shooter is already at target speed (hold).
+    m_operatorController.rightBumper().whileTrue(shooter.feedCommand());
+
+    // B: emergency stop — cancels all shooter/feeder activity immediately.
     m_operatorController.b().onTrue(shooter.stopAllCommand());
 
-    // Y: manual feed — bypasses speed gate, use with caution
-    m_operatorController.y().whileTrue(shooter.manualFeedCommand());
+    // LB: toggle intake — first press draws ball in, second press stops.
+    // "Intake Active" boolean on dashboard shows current state.
+    m_operatorController.leftBumper().toggleOnTrue(shooter.intakeCommand());
 
-    // RT: feed-when-ready — feeder runs only while shooter is at speed
-    m_operatorController.rightTrigger().whileTrue(shooter.feedCommand());
+    // LT: toggle eject — first press reverses feeder to expel ball, second press stops.
+    m_operatorController.leftTrigger().toggleOnTrue(shooter.ejectCommand());
 
-    // LT: intake — draw ball in
-    m_operatorController.leftTrigger().whileTrue(shooter.intakeCommand());
-
-    // LB: eject — reverse feeder to clear ball
-    m_operatorController.leftBumper().whileTrue(shooter.ejectCommand());
-
-    // POV: distance presets — stages the RPM target without spinning the motor
+    // POV: stage a distance preset without spinning the motor.
+    // Acts as priority-3 fallback when vision and odometry are unavailable.
     m_operatorController.povUp().onTrue(
         Commands.runOnce(() -> shooter.setDistancePreset(15.0))
     );

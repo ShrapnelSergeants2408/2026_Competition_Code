@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -431,17 +432,30 @@ public class Vision extends SubsystemBase {
     }
 
     /**
-     * Get distance to hub.
+     * Returns the hub pose for the current alliance (blue by default if unknown).
+     * Uses BLUE_HUB_POSE / RED_HUB_POSE derived from the 2026 AprilTag layout.
      */
-    public Optional<Double> getDistanceToHub() {
-        return getDistanceToPose(VisionConstants.HUB_POSE);
+    public Pose2d getAllianceHubPose() {
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+            return VisionConstants.RED_HUB_POSE;
+        }
+        return VisionConstants.BLUE_HUB_POSE;
     }
 
     /**
-     * Check if aligned with hub.
+     * Get vision-estimated distance (meters) to the alliance hub.
+     * Returns empty if no fresh vision measurement is available.
+     */
+    public Optional<Double> getDistanceToHub() {
+        return getDistanceToPose(getAllianceHubPose());
+    }
+
+    /**
+     * Check if aligned with the alliance hub within toleranceDeg degrees.
      */
     public boolean isAlignedWithHub(double toleranceDeg) {
-        return isAlignedWithTarget(VisionConstants.HUB_POSE, toleranceDeg);
+        return isAlignedWithTarget(getAllianceHubPose(), toleranceDeg);
     }
 
     /**
@@ -540,10 +554,10 @@ public class Vision extends SubsystemBase {
             SmartDashboard.putNumber("Vision/NumTagsUsed", measurement.numTagsUsed());
             SmartDashboard.putNumber("Vision/AvgTagDistance", measurement.averageDistance());
 
-            getDistanceToPose(VisionConstants.HUB_POSE, bestMeasurement)
+            getDistanceToPose(getAllianceHubPose(), bestMeasurement)
                 .ifPresent(distance -> SmartDashboard.putNumber("Vision/HubDistance", distance));
             SmartDashboard.putBoolean("Vision/HubAligned",
-                isAlignedWithTarget(VisionConstants.HUB_POSE, 2.0, bestMeasurement));
+                isAlignedWithTarget(getAllianceHubPose(), 2.0, bestMeasurement));
 
             getDistanceToPose(VisionConstants.HP_STATION_POSE, bestMeasurement)
                 .ifPresent(distance -> SmartDashboard.putNumber("Vision/HPStationDistance", distance));
@@ -576,7 +590,7 @@ public class Vision extends SubsystemBase {
             SmartDashboard.putNumber("Vision/NumTagsUsed", 0);
             SmartDashboard.putNumber("Vision/AvgTagDistance", 0.0);
 
-            SmartDashboard.putNumber("Vision/HubDistance", Double.NaN);
+            SmartDashboard.putNumber("Vision/HubDistance", -1.0);
             SmartDashboard.putBoolean("Vision/HubAligned", false);
             SmartDashboard.putNumber("Vision/HPStationDistance", Double.NaN);
             SmartDashboard.putBoolean("Vision/HPStationAligned", false);
