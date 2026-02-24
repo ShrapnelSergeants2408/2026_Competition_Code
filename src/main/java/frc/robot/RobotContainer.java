@@ -8,6 +8,7 @@ import static frc.robot.Constants.ShooterConstants.NOMINAL_VOLTAGE;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -47,7 +48,7 @@ public class RobotContainer {
   // Drivetrain subsystem
   private final DriveTrain drivetrain = new DriveTrain(vision);
 
-  // Driver camera (USB webcam)
+  // Driver camera (USB webcam) — may be null if no camera is present at startup.
   private final UsbCamera driverCamera;
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
@@ -59,15 +60,19 @@ public class RobotContainer {
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
-    // Initialize driver camera (USB webcam on front)
-    driverCamera = CameraServer.startAutomaticCapture(
-        VisionConstants.DRIVER_CAMERA_NAME,
-        0  // USB port 0 (TODO: adjust if needed)
-    );
-
-    // TODO: Configure resolution and FPS for low latency
-    driverCamera.setResolution(320, 240);  // Low res for speed
-    driverCamera.setFPS(30);
+    // Initialize driver camera. Guard against missing hardware (simulation,
+    // camera unplugged) so a missing USB camera does not crash the constructor.
+    UsbCamera tempCamera = null;
+    try {
+      tempCamera = CameraServer.startAutomaticCapture(VisionConstants.DRIVER_CAMERA_NAME, 0);
+      tempCamera.setResolution(320, 240);
+      tempCamera.setFPS(30);
+    } catch (Exception e) {
+      DriverStation.reportWarning(
+          "Driver camera not found on USB port 0 — running without driver feed: " + e.getMessage(),
+          false);
+    }
+    driverCamera = tempCamera;
 
     // Build auto chooser — must run after DriveTrain constructor calls AutoBuilder.configure()
     autoChooser = AutoBuilder.buildAutoChooser();

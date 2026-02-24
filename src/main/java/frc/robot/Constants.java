@@ -77,15 +77,21 @@ public final class Constants {
     }
 
     public static class Auto {
+        // Single authoritative max robot velocity.
+        // 15 ft/s converted to m/s. Used for both PathPlanner speed limiting
+        // and the PPLTVController gain-table upper bound so they stay in sync.
+        public static final double MAX_ROBOT_VELOCITY_MPS = 15.0 * 0.3048; // 4.572 m/s
+
         // PathPlanner motion limits
-        public static final double MAX_MODULE_SPEED = 3.0; // m/s
+        public static final double MAX_MODULE_SPEED = MAX_ROBOT_VELOCITY_MPS; // m/s
         public static final double MAX_ACCELERATION = 2.0; // m/s^2
         public static final double MAX_ANGULAR_VELOCITY = 540.0; // deg/s
         public static final double MAX_ANGULAR_ACCELERATION = 720.0; // deg/s^2
 
-        // PPLTVController tuning (state tolerances and control effort limits)
+        // PPLTVController tuning defaults (state tolerances and control effort limits).
+        // Live adjustment is available on SmartDashboard during test mode only.
         public static final double PPLTV_DT = 0.02;
-        public static final double PPLTV_MAX_VELOCITY = 9.0;
+        public static final double PPLTV_MAX_VELOCITY = MAX_ROBOT_VELOCITY_MPS; // matches MAX_MODULE_SPEED
         public static final double PPLTV_Q_X = 0.0625;
         public static final double PPLTV_Q_Y = 0.125;
         public static final double PPLTV_Q_THETA = 2.0;

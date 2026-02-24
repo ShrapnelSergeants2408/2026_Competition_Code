@@ -31,7 +31,9 @@ import java.util.function.DoubleSupplier;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PathFollowingController;
 import com.pathplanner.lib.controllers.PPLTVController;
+import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase.PersistMode;
@@ -95,7 +97,7 @@ public class DriveTrain extends SubsystemBase {
     // State — defaults to field-oriented tank per driver preference
     private DriveMode driveMode = DriveMode.TANK;
     private OrientationMode orientationMode = OrientationMode.FIELD_ORIENTED;
-    private boolean visionEnabled = false;
+    // E7: visionEnabled field removed; check is inlined in periodic() to reduce mutable state.
     // INEFF-05: cached; rebuilt only when driveMode or orientationMode actually changes.
     private String driveStateString = "Field-Oriented Tank";
 
@@ -116,10 +118,7 @@ public class DriveTrain extends SubsystemBase {
     public void periodic() {
         poseEstimator.update(getHeading(), getLeftDistanceMeters(), getRightDistanceMeters());
 
-        if (visionSubsystem != null) {
-            visionEnabled = visionSubsystem.isAnyVisionAvailable();
-        }
-        if (visionEnabled) {
+        if (visionSubsystem != null && visionSubsystem.isAnyVisionAvailable()) {
             updateVisionMeasurements();
         }
         refreshLtvControllerFromDashboard();
@@ -224,8 +223,12 @@ public class DriveTrain extends SubsystemBase {
         if (qx != lastQx || qy != lastQy || qtheta != lastQtheta
             || rvel != lastRvel || romega != lastRomega
             || dt != lastDt || maxVel != lastMaxVelocity) {
+            // BUG-07: Only rebuild the controller object. AutoBuilder.configure() was
+            // called once in the constructor and must not be called again — repeated
+            // calls register duplicate command factories. PathPlanner reads ltvController
+            // by field reference on each path invocation, so reassigning the field here
+            // is sufficient for the new gains to take effect on the next auto run.
             rebuildLtvController(qx, qy, qtheta, rvel, romega, dt, maxVel);
-            configurePathPlanner();
         }
     }
 
