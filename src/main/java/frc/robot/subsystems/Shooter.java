@@ -55,6 +55,7 @@ public class Shooter extends SubsystemBase {
     private boolean spikeDebounceRunning = false;
     private final Timer jamReverseTimer = new Timer();
     private ShooterState stateBeforeJam = ShooterState.IDLE;
+    private int telemetryLoopCounter = 0;
 
     // ── Distance resolution ───────────────────────────────────────────────────
     private final Vision vision;
@@ -167,7 +168,15 @@ public class Shooter extends SubsystemBase {
         povPresetDistanceFt = distanceFeet;
         currentTargetDistance = distanceFeet;
         targetRPM = getRPMFromDistance(distanceFeet);
+        distanceSource = "POV Preset";
         povPresetSet = true;
+    }
+
+    public void clearDistancePreset() {
+        povPresetSet = false;
+        if ("POV Preset".equals(distanceSource)) {
+            distanceSource = "Default";
+        }
     }
 
     public double getTargetDistance() {
@@ -202,6 +211,11 @@ public class Shooter extends SubsystemBase {
             : pose.getX() >= RED_OFFENSIVE_MIN_X;
     }
 
+    private boolean isVisionMeasurementUsable(VisionMeasurement measurement) {
+        return measurement.numTagsUsed() != 1
+            || measurement.bestTargetAmbiguity() <= MAX_AMBIGUITY;
+    }
+
     /**
      * Returns true when the shooter is permitted to spin up.
      * In test mode this is always true (manual bench/pit testing from any field position).
@@ -214,7 +228,10 @@ public class Shooter extends SubsystemBase {
         if (vision != null) {
             var freshMeasurement = vision.getBestVisionMeasurementIfFresh();
             if (freshMeasurement.isPresent()) {
-                return isInOffensiveZone(freshMeasurement.get().estimatedPose());
+                VisionMeasurement measurement = freshMeasurement.get();
+                if (isVisionMeasurementUsable(measurement)) {
+                    return isInOffensiveZone(measurement.estimatedPose());
+                }
             }
         }
         if (drivetrain != null) {
@@ -238,19 +255,24 @@ public class Shooter extends SubsystemBase {
     private double resolveShooterDistance() {
         boolean testMode = DriverStation.isTest();
         Pose2d hubPose = getAllianceHubPose();
+        visionDistanceFt = -1.0;
+        odometryDistanceFt = -1.0;
 
         // ── Priority 1: Vision ─────────────────────────────────────────────
         if (vision != null) {
             var freshMeasurement = vision.getBestVisionMeasurementIfFresh();
             if (freshMeasurement.isPresent()) {
-                Pose2d visionPose = freshMeasurement.get().estimatedPose();
-                if (testMode || isInOffensiveZone(visionPose)) {
+                VisionMeasurement measurement = freshMeasurement.get();
+                if (isVisionMeasurementUsable(measurement)) {
+                    Pose2d visionPose = measurement.estimatedPose();
                     double meters = visionPose.getTranslation().getDistance(hubPose.getTranslation());
                     visionDistanceFt = meters / 0.3048;
-                    currentTargetDistance = visionDistanceFt;
-                    targetRPM = getRPMFromDistance(visionDistanceFt);
-                    distanceSource = "Vision";
-                    return visionDistanceFt;
+                    if (testMode || isInOffensiveZone(visionPose)) {
+                        currentTargetDistance = visionDistanceFt;
+                        targetRPM = getRPMFromDistance(visionDistanceFt);
+                        distanceSource = "Vision";
+                        return visionDistanceFt;
+                    }
                 }
             }
         }
@@ -258,9 +280,9 @@ public class Shooter extends SubsystemBase {
         // ── Priority 2: Odometry ───────────────────────────────────────────
         if (drivetrain != null) {
             Pose2d robotPose = drivetrain.getPose();
+            double meters = robotPose.getTranslation().getDistance(hubPose.getTranslation());
+            odometryDistanceFt = meters / 0.3048;
             if (testMode || isInOffensiveZone(robotPose)) {
-                double meters = robotPose.getTranslation().getDistance(hubPose.getTranslation());
-                odometryDistanceFt = meters / 0.3048;
                 currentTargetDistance = odometryDistanceFt;
                 targetRPM = getRPMFromDistance(odometryDistanceFt);
                 distanceSource = "Odometry";
@@ -480,7 +502,10 @@ public class Shooter extends SubsystemBase {
         updateJamDetection();
         updateJamClear();
         updateSmartDashboardTuning();
-        logTelemetry();
+        if (++telemetryLoopCounter >= SHOOTER_TELEMETRY_PERIOD_LOOPS) {
+            telemetryLoopCounter = 0;
+            logTelemetry();
+        }
     }
 
     /** Read SmartDashboard PID values and push to TalonFX slot 0. Test mode only. */

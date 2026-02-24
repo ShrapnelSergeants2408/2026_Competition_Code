@@ -23,7 +23,6 @@ import edu.wpi.first.math.numbers.N3;
  * constants are needed, to reduce verbosity.
  */
 
-// NO IMPERIAL UNITS
 public final class Constants {
 
     public static class OperatorConstants {
@@ -73,13 +72,14 @@ public final class Constants {
         public static final double EJECT_SPEED = -0.5;  // Ejecting ball out
         public static final double JAM_REVERSE_SPEED = -0.5; // Jam-clear reverse
         public static final double NOMINAL_VOLTAGE = 12;
+        public static final int SHOOTER_TELEMETRY_PERIOD_LOOPS = 5;
 
         // Current limits
         public static final int SHOOTER_CURRENT_LIMIT = 40; // TalonFX stator limit (amps)
         public static final int FEEDER_CURRENT_LIMIT = 30;  // SparkMAX smart current limit (amps)
 
         // Jam detection (feeder/intake SparkMAX)
-        public static final double FEEDER_SPIKE_THRESHOLD_AMPS = 35.0; // current spike triggers jam clear
+        public static final double FEEDER_SPIKE_THRESHOLD_AMPS = 30.0; // current spike triggers jam clear
         public static final double JAM_REVERSE_TIME_SEC = 0.25;         // duration of jam-clear reverse
 
         // Shooter PID / feedforward — Phoenix 6 on-controller slot 0

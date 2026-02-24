@@ -50,11 +50,13 @@ public class RobotContainer {
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
 
-  // Operator controller — all intake and shooting operations (port 1)
+  // Operator controller – all intake and shooting operations (port 1)
   private final CommandXboxController m_operatorController =
       new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
 
   // Autonomous chooser
+  private final Command doNothingAuto =
+      Commands.waitUntil(DriverStation::isTeleopEnabled).withName("Do Nothing");
   private final SendableChooser<Command> autoChooser;
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
@@ -73,8 +75,9 @@ public class RobotContainer {
     }
     driverCamera = tempCamera;
 
-    // Build auto chooser — must run after DriveTrain constructor calls AutoBuilder.configure()
+    // Build auto chooser – must run after DriveTrain constructor calls AutoBuilder.configure()
     autoChooser = AutoBuilder.buildAutoChooser();
+    autoChooser.setDefaultOption("Do Nothing", doNothingAuto);
     SmartDashboard.putData("Auto Chooser", autoChooser);
 
     configureDefaultCommands();
@@ -108,7 +111,8 @@ public class RobotContainer {
    *   Y        = toggle shooter spin-up to distance-resolved RPM (zone-locked outside offensive zone)
    *   X        = shoot: spin up + auto-feed when at speed (hold; zone-locked)
    *   RB       = feed if shooter is at speed (hold)
-   *   B        = stop all — immediately stops shooter and feeder
+   *   B        = stop all – immediately stops shooter and feeder
+   *   A        = clear distance preset (return to automatic distance resolution)
    *   LB       = toggle intake (draw ball in; dashboard indicator)
    *   LT       = toggle eject (reverse feeder to expel ball)
    *   POV Up   = stage distance preset 15.0 ft (no spin-up)
@@ -140,10 +144,15 @@ public class RobotContainer {
     // RB: feed only if shooter is already at target speed (hold).
     m_operatorController.rightBumper().whileTrue(shooter.feedCommand());
 
-    // B: emergency stop — cancels all shooter/feeder activity immediately.
+    // B: emergency stop – cancels all shooter/feeder activity immediately.
     m_operatorController.b().onTrue(shooter.stopAllCommand());
 
-    // LB: toggle intake — first press draws ball in, second press stops.
+    // A: clear staged distance preset, returning to automatic distance resolution.
+    m_operatorController.a().onTrue(
+        Commands.runOnce(shooter::clearDistancePreset)
+    );
+
+    // LB: toggle intake – first press draws ball in, second press stops.
     // "Intake Active" boolean on dashboard shows current state.
     m_operatorController.leftBumper().toggleOnTrue(shooter.intakeCommand());
 
@@ -173,6 +182,9 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     Command selectedAuto = autoChooser.getSelected();
+    if (selectedAuto == null) {
+      selectedAuto = doNothingAuto;
+    }
     drivetrain.initializePose(selectedAuto); // seed pose from vision or auto path before running
     return selectedAuto;
   }

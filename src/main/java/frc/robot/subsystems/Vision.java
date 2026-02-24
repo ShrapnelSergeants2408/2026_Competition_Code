@@ -179,6 +179,7 @@ public class Vision extends SubsystemBase {
         // POSITIVE_INFINITY (unknown tag IDs) is caught by the quality gate before
         // it can reach calculateStandardDeviations().
         double avgDistance = calculateAverageTagDistance(result.getTargets(), pose2d);
+        double bestTargetAmbiguity = result.getBestTarget().getPoseAmbiguity();
 
         // Quality gating
         if (!shouldUseMeasurement(pose, result, avgDistance)) {
@@ -193,6 +194,7 @@ public class Vision extends SubsystemBase {
             pose2d,
             pose.timestampSeconds,
             stdDevs,
+            bestTargetAmbiguity,
             numTags,
             avgDistance
         ));
