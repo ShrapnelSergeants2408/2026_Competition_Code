@@ -49,65 +49,6 @@ All bugs and inefficiencies identified across both review sessions are now resol
 
 ---
 
-## Enhancement Recommendations (Open)
-
-The following elegance and architecture improvements were identified but not yet implemented.
-They are non-blocking and have no impact on robot correctness or performance at this time.
-
-### E5 — Elegance: Extract field-forward projection to a shared helper
-
-`fieldOrientedArcade()` and `fieldOrientedTank()` both contain identical `fwd * Math.cos(headingRad)` logic. Extract to a single private method:
-
-```java
-/** Projects the driver's field-forward intent onto the robot's forward axis.
- *  For a differential drive, only the cosine component is usable;
- *  the sine component would require lateral motion the robot cannot produce. */
-private double projectFieldForward(double fieldFwd, double headingRad) {
-    return fieldFwd * Math.cos(headingRad);
-}
-```
-
-This makes the heading math visible in exactly one place, clearly documents the intentional omission of the `sin` component, and simplifies any future swerve migration.
-
----
-
-### E6 — Elegance: Replace multi-branch vision camera selection with a Comparator
-
-`computeBestVisionMeasurement()` uses three nested if-else branches to pick the better measurement. Replace with a `Comparator`-based selection that is shorter, self-documenting, and trivially extensible (e.g., adding ambiguity as a tiebreaker):
-
-```java
-Comparator<VisionMeasurement> comp = Comparator
-    .comparingInt(VisionMeasurement::numTagsUsed).reversed()
-    .thenComparingDouble(VisionMeasurement::averageDistance);
-
-return Stream.of(frontMeasurement, rearMeasurement)
-    .filter(Optional::isPresent)
-    .map(Optional::get)
-    .min(comp);
-```
-
----
-
-### E8 — Elegance: Document field-oriented heading-loss behavior
-
-Field-oriented tank/arcade projects driver-forward intent via `cos(heading)`. When the robot faces ±90° from field-forward, the joystick forward response drops to zero — correct physics for a non-holonomic drive, but potentially confusing to a driver.
-
-Recommended improvements:
-- Add `SmartDashboard.putNumber("DriveTrain/FOEfficiency", Math.abs(Math.cos(heading)))` so drivers can see on the dashboard when forward responsiveness is reduced.
-- Add a doc-comment to `fieldOrientedTank()` and `fieldOrientedArcade()` stating: *"When heading is ±90° from field-forward, `cos(heading) ≈ 0` and forward output is suppressed by design; the robot must rotate to re-align before field-forward motion resumes."*
-
----
-
-### E9 — Architecture: Complete AdvantageKit integration or reduce its scope
-
-`Robot` extends `LoggedRobot` and writes to `WPILOGWriter`/`NT4Publisher`, but subsystems write directly to `SmartDashboard` rather than through `Logger.recordOutput()`. This is a partial integration: the `LoggedRobot` framework overhead is present, but subsystem-level replay in AdvantageScope is not available.
-
-Two clear paths:
-- **Minimal (reduce scope):** Revert to `TimedRobot`, keep `SmartDashboard` telemetry. Eliminates the AdvantageKit dependency cost with no loss of current functionality.
-- **Full integration:** Replace `SmartDashboard.put*()` in periodic methods with `Logger.recordOutput()` and implement the IO layer per AdvantageKit conventions. Enables full match replay and structured logging.
-
----
-
 ## Priority Table
 
 | ID | Category | Title | Severity | Status |
@@ -128,11 +69,7 @@ Two clear paths:
 | INEFF-05 | Inefficiency | Telemetry computes all 6 field-pose distances every cycle | Low | **RESOLVED** |
 | BUG-10 | Quality | AdvantageKit `ProjectName` = `"MyProject"` (template default) | Low | **RESOLVED** |
 | E7 | Elegance | `visionEnabled` field is unnecessary mutable state | Low | **RESOLVED** |
-| E5 | Elegance | Extract field-forward projection to a shared helper | Low | Open |
-| E6 | Elegance | Replace multi-branch camera selection with Comparator | Low | Open |
-| E8 | Elegance | Document field-oriented heading-loss behavior | Low | Open |
-| E9 | Architecture | Complete AdvantageKit integration or reduce scope | Medium | Open |
 
 ---
 
-*Updated 2026-02-24 against the `hieb-trial` branch. All bugs and inefficiencies from both review sessions are resolved. Remaining open items (E5, E6, E8, E9) are non-blocking elegance and architecture enhancements.*
+*Updated 2026-02-24 against the `hieb-trial` branch. All bugs and inefficiencies from both review sessions are resolved. *
