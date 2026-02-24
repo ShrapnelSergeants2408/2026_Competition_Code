@@ -1,6 +1,17 @@
 package frc.robot.subsystems;
 
+import static frc.robot.Constants.SensorConstants.*;
 import static frc.robot.Constants.ShooterConstants.*;
+
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
@@ -8,134 +19,333 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
-import com.revrobotics.RelativeEncoder;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.PIDController;
+
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Shooter extends SubsystemBase {
 
-    private static final String TUNING_PREFIX = "Shooter/Tuning/";
-
-    // Motors
-    private final SparkMax shooterMotor;
+    // ── Hardware ──────────────────────────────────────────────────────────────
+    private final TalonFX shooterMotor;
     private final SparkMax feederMotor;
+    private final DigitalInput photoSensor; // null when PHOTO_SENSOR_ENABLED = false
 
-    private final RelativeEncoder shooterEncoder;
-    private final PIDController shooterPid =
-        new PIDController(SHOOTER_KP, SHOOTER_KI, SHOOTER_KD);
+    // ── Reusable control requests (avoid per-loop allocation) ─────────────────
+    private final VelocityVoltage velocityRequest = new VelocityVoltage(0).withSlot(0);
+    private final NeutralOut neutralRequest = new NeutralOut();
 
-    private boolean pidEnabled = false;
-    private double targetRpm = SHOOTER_TARGET_RPM;
-    private double lastKp = SHOOTER_KP;
-    private double lastKi = SHOOTER_KI;
-    private double lastKd = SHOOTER_KD;
+    // ── State ─────────────────────────────────────────────────────────────────
+    public enum ShooterState { IDLE, SPIN_UP, FEED, INTAKE, EJECT, JAM_CLEAR }
+    private ShooterState currentState = ShooterState.IDLE;
 
-    public Shooter(double nominalVoltage) {
-        shooterMotor = new SparkMax(SHOOTER_MOTOR_ID, MotorType.kBrushless);
+    private double targetRPM = TARGET_RPM_10_FEET;
+    private double currentTargetDistance = 10.0;
+
+    // Jam detection
+    private final Timer spikeDebounceTimer = new Timer();
+    private boolean spikeDebounceRunning = false;
+    private final Timer jamReverseTimer = new Timer();
+    private ShooterState stateBeforeJam = ShooterState.IDLE;
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+    public Shooter() {
+        // TalonFX shooter — Phoenix 6 on-controller velocity PID, slot 0
+        shooterMotor = new TalonFX(SHOOTER_MOTOR_ID);
+        TalonFXConfiguration shooterConfig = new TalonFXConfiguration()
+            .withMotorOutput(new MotorOutputConfigs()
+                .withNeutralMode(NeutralModeValue.Coast)
+                .withInverted(SHOOTER_INVERTED
+                    ? InvertedValue.Clockwise_Positive
+                    : InvertedValue.CounterClockwise_Positive))
+            .withCurrentLimits(new CurrentLimitsConfigs()
+                .withStatorCurrentLimit(SHOOTER_CURRENT_LIMIT)
+                .withStatorCurrentLimitEnable(true))
+            .withSlot0(new Slot0Configs()
+                .withKP(SHOOTER_KP)
+                .withKI(SHOOTER_KI)
+                .withKD(SHOOTER_KD)
+                .withKV(SHOOTER_KV));
+        shooterMotor.getConfigurator().apply(shooterConfig);
+
+        // SparkMAX feeder/intake — open-loop duty cycle, brake at idle
         feederMotor = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushless);
-        shooterEncoder = shooterMotor.getEncoder();
+        SparkMaxConfig feederConfig = new SparkMaxConfig();
+        feederConfig
+            .idleMode(IdleMode.kBrake)
+            .smartCurrentLimit(FEEDER_CURRENT_LIMIT)
+            .inverted(FEEDER_INVERTED)
+            .openLoopRampRate(0.0);
+        feederMotor.configure(feederConfig,
+            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        // Optional safety limits
-        SparkMaxConfig config = new SparkMaxConfig();
-        config.voltageCompensation(NOMINAL_VOLTAGE);
-        config.smartCurrentLimit(STALL_LIMIT);
+        // Photo sensor — skip DIO allocation until the sensor is installed
+        photoSensor = PHOTO_SENSOR_ENABLED ? new DigitalInput(PHOTO_SENSOR_DIO_PORT) : null;
 
-        config.idleMode(IdleMode.kBrake);
-        shooterMotor.configure(
-            config,
-            ResetMode.kResetSafeParameters,
-            PersistMode.kNoPersistParameters
-        );
-        feederMotor.configure(
-            config,
-            ResetMode.kResetSafeParameters,
-            PersistMode.kNoPersistParameters
-        );
-
-        SmartDashboard.putNumber(TUNING_PREFIX + "kP", SHOOTER_KP);
-        SmartDashboard.putNumber(TUNING_PREFIX + "kI", SHOOTER_KI);
-        SmartDashboard.putNumber(TUNING_PREFIX + "kD", SHOOTER_KD);
-        SmartDashboard.putNumber(TUNING_PREFIX + "TargetRPM", SHOOTER_TARGET_RPM);
-        SmartDashboard.putBoolean(TUNING_PREFIX + "UsePID", SHOOTER_USE_PID);
+        // Seed SmartDashboard tuning entries with constant defaults
+        SmartDashboard.putNumber("Shooter/Tuning/kP", SHOOTER_KP);
+        SmartDashboard.putNumber("Shooter/Tuning/kI", SHOOTER_KI);
+        SmartDashboard.putNumber("Shooter/Tuning/kD", SHOOTER_KD);
+        SmartDashboard.putNumber("Shooter/Tuning/kV", SHOOTER_KV);
     }
 
-    /** Spins the shooter wheel to launch the ball */
-    public void startShooter() {
-        pidEnabled = DriverStation.isTest()
-            ? SmartDashboard.getBoolean(TUNING_PREFIX + "UsePID", SHOOTER_USE_PID)
-            : SHOOTER_USE_PID;
-        if (pidEnabled) {
-            shooterPid.reset();
-            if (DriverStation.isTest()) {
-                updatePidFromDashboard();
-            }
-        } else {
-            shooterMotor.set(SHOOTER_SPEED);
-        }
+    // ── Shooter control ───────────────────────────────────────────────────────
+
+    /** Send a velocity target (RPM) to the TalonFX via Phoenix 6 velocity PID. */
+    public void setTargetRPM(double rpm) {
+        targetRPM = rpm;
+        shooterMotor.setControl(velocityRequest.withVelocity(rpm / 60.0));
     }
 
-    /** Stops the shooter wheel */
+    /** Coast the shooter to a stop. */
     public void stopShooter() {
-        pidEnabled = false;
-        shooterMotor.stopMotor();
+        shooterMotor.setControl(neutralRequest);
     }
 
-    /** Feeds the ball into the shooter */
-    public void startFeeder() {
-        feederMotor.set(FEEDER_SPEED);
+    /** Read actual shooter velocity from the TalonFX encoder in RPM. */
+    public double getCurrentRPM() {
+        return shooterMotor.getVelocity().getValueAsDouble() * 60.0;
     }
 
-    /** Stops feeding */
-    public void stopFeeder() {
-        feederMotor.stopMotor();
+    /** True when the shooter is spinning and within RPM_TOLERANCE of the target. */
+    public boolean isAtTargetSpeed() {
+        return targetRPM > 0 && Math.abs(getCurrentRPM() - targetRPM) <= RPM_TOLERANCE;
+    }
+
+    // ── Distance → RPM table ─────────────────────────────────────────────────
+
+    /** Interpolate target RPM from the distance-to-RPM map. */
+    public double getRPMFromDistance(double distanceFeet) {
+        if (distanceFeet <= DISTANCES_FEET[0])
+            return DISTANCE_RPM_MAP[0];
+        if (distanceFeet >= DISTANCES_FEET[DISTANCES_FEET.length - 1])
+            return DISTANCE_RPM_MAP[DISTANCE_RPM_MAP.length - 1];
+        for (int i = 0; i < DISTANCES_FEET.length - 1; i++) {
+            if (distanceFeet >= DISTANCES_FEET[i] && distanceFeet <= DISTANCES_FEET[i + 1]) {
+                double t = (distanceFeet - DISTANCES_FEET[i])
+                         / (DISTANCES_FEET[i + 1] - DISTANCES_FEET[i]);
+                return DISTANCE_RPM_MAP[i] + t * (DISTANCE_RPM_MAP[i + 1] - DISTANCE_RPM_MAP[i]);
+            }
+        }
+        return DISTANCE_RPM_MAP[DISTANCE_RPM_MAP.length - 1];
     }
 
     /**
-     * Shoots a ball:
-     * - Shooter spins up
-     * - Feeder pushes ball in
-     *
-     * NOTE: In a real robot, you usually want
-     * a short delay before starting the feeder.
+     * Set the target distance (feet) — looks up and applies the corresponding RPM immediately.
+     * Use during an active shoot to re-aim on the fly.
      */
-    public void shoot() {
-        startShooter();
-        startFeeder();
+    public void setTargetDistance(double distanceFeet) {
+        currentTargetDistance = distanceFeet;
+        setTargetRPM(getRPMFromDistance(distanceFeet));
     }
 
-    /** Stops everything immediately */
-    public void stopAll() {
-        stopShooter();
-        stopFeeder();
+    /**
+     * Pre-set the distance/RPM target without spinning the motor.
+     * Use with POV buttons so the operator can stage the shot before pressing shoot.
+     */
+    public void setDistancePreset(double distanceFeet) {
+        currentTargetDistance = distanceFeet;
+        targetRPM = getRPMFromDistance(distanceFeet);
     }
+
+    public double getTargetDistance() {
+        return currentTargetDistance;
+    }
+
+    // ── Feeder/intake control (private — exposed via commands) ────────────────
+
+    private void runFeeder(double speed) {
+        feederMotor.set(speed);
+    }
+
+    private void stopFeeder() {
+        feederMotor.set(0.0);
+    }
+
+    // ── Ball detection ────────────────────────────────────────────────────────
+
+    /**
+     * Returns true if the photo sensor detects a ball.
+     * Always returns false when PHOTO_SENSOR_ENABLED = false (sensor not installed).
+     */
+    public boolean hasBall() {
+        if (photoSensor == null) return false;
+        boolean raw = photoSensor.get();
+        return PHOTO_SENSOR_INVERTED ? !raw : raw;
+    }
+
+    /**
+     * True when it is safe to feed: shooter is at target speed AND either the
+     * sensor is disabled (assume ball present) or the sensor detects a ball.
+     */
+    public boolean canShoot() {
+        return isAtTargetSpeed() && (!PHOTO_SENSOR_ENABLED || hasBall());
+    }
+
+    // ── Jam detection ─────────────────────────────────────────────────────────
+
+    private void updateJamDetection() {
+        if (currentState == ShooterState.JAM_CLEAR) return;
+        if (currentState != ShooterState.INTAKE && currentState != ShooterState.FEED) {
+            if (spikeDebounceRunning) {
+                spikeDebounceTimer.stop();
+                spikeDebounceRunning = false;
+            }
+            return;
+        }
+
+        boolean spiking = feederMotor.getOutputCurrent() > FEEDER_SPIKE_THRESHOLD_AMPS;
+        if (spiking) {
+            if (!spikeDebounceRunning) {
+                spikeDebounceTimer.reset();
+                spikeDebounceTimer.start();
+                spikeDebounceRunning = true;
+            } else if (spikeDebounceTimer.hasElapsed(0.1)) { // 100 ms debounce
+                triggerJamClear();
+            }
+        } else {
+            spikeDebounceTimer.stop();
+            spikeDebounceRunning = false;
+        }
+    }
+
+    private void triggerJamClear() {
+        stateBeforeJam = currentState;
+        currentState = ShooterState.JAM_CLEAR;
+        spikeDebounceRunning = false;
+        spikeDebounceTimer.stop();
+        jamReverseTimer.reset();
+        jamReverseTimer.start();
+        runFeeder(JAM_REVERSE_SPEED);
+    }
+
+    private void updateJamClear() {
+        if (currentState != ShooterState.JAM_CLEAR) return;
+        if (jamReverseTimer.hasElapsed(JAM_REVERSE_TIME_SEC)) {
+            jamReverseTimer.stop();
+            currentState = stateBeforeJam;
+            switch (currentState) {
+                case INTAKE -> runFeeder(INTAKE_SPEED);
+                case FEED   -> runFeeder(FEEDER_SPEED);
+                default     -> stopFeeder();
+            }
+        }
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────────
+
+    /**
+     * Spin up to target RPM, then feed automatically when ready.
+     * Shooter coasts and feeder stops when the command ends (button released).
+     */
+    public Command shootCommand() {
+        return Commands.run(() -> {
+            if (currentState == ShooterState.IDLE) {
+                currentState = ShooterState.SPIN_UP;
+                setTargetRPM(targetRPM);
+            }
+            if (currentState == ShooterState.SPIN_UP && canShoot()) {
+                currentState = ShooterState.FEED;
+                runFeeder(FEEDER_SPEED);
+            }
+        }, this).finallyDo(interrupted -> {
+            stopShooter();
+            stopFeeder();
+            currentState = ShooterState.IDLE;
+        });
+    }
+
+    /**
+     * Feed only — runs feeder while shooter is already at target speed.
+     * Stops feeder (but not shooter) when command ends.
+     */
+    public Command feedCommand() {
+        return Commands.run(() -> {
+            if (canShoot()) {
+                currentState = ShooterState.FEED;
+                runFeeder(FEEDER_SPEED);
+            } else {
+                stopFeeder();
+                if (currentState == ShooterState.FEED) currentState = ShooterState.SPIN_UP;
+            }
+        }, this).finallyDo(interrupted -> {
+            stopFeeder();
+            if (currentState == ShooterState.FEED) currentState = ShooterState.IDLE;
+        });
+    }
+
+    /** Manual feed — runs feeder regardless of shooter speed. Use with caution. */
+    public Command manualFeedCommand() {
+        return Commands.startEnd(
+            () -> { currentState = ShooterState.FEED; runFeeder(FEEDER_SPEED); },
+            () -> { stopFeeder(); currentState = ShooterState.IDLE; },
+            this
+        );
+    }
+
+    /** Draw ball in — runs feeder forward while held. */
+    public Command intakeCommand() {
+        return Commands.startEnd(
+            () -> { currentState = ShooterState.INTAKE; runFeeder(INTAKE_SPEED); },
+            () -> { stopFeeder(); currentState = ShooterState.IDLE; },
+            this
+        );
+    }
+
+    /** Eject ball — runs feeder in reverse while held. */
+    public Command ejectCommand() {
+        return Commands.startEnd(
+            () -> { currentState = ShooterState.EJECT; runFeeder(EJECT_SPEED); },
+            () -> { stopFeeder(); currentState = ShooterState.IDLE; },
+            this
+        );
+    }
+
+    /** Immediately stop shooter and feeder and return to idle. */
+    public Command stopAllCommand() {
+        return Commands.runOnce(() -> {
+            stopShooter();
+            stopFeeder();
+            currentState = ShooterState.IDLE;
+        }, this);
+    }
+
+    // ── Periodic ──────────────────────────────────────────────────────────────
 
     @Override
     public void periodic() {
-        if (pidEnabled) {
-            if (DriverStation.isTest()) {
-                updatePidFromDashboard();
-            }
-            double currentRpm = shooterEncoder.getVelocity();
-            double output = shooterPid.calculate(currentRpm, targetRpm);
-            shooterMotor.set(MathUtil.clamp(output, -1.0, 1.0));
-            SmartDashboard.putNumber(TUNING_PREFIX + "CurrentRPM", currentRpm);
-        }
+        updateJamDetection();
+        updateJamClear();
+        updateSmartDashboardTuning();
+        logTelemetry();
     }
 
-    private void updatePidFromDashboard() {
-        double kp = SmartDashboard.getNumber(TUNING_PREFIX + "kP", SHOOTER_KP);
-        double ki = SmartDashboard.getNumber(TUNING_PREFIX + "kI", SHOOTER_KI);
-        double kd = SmartDashboard.getNumber(TUNING_PREFIX + "kD", SHOOTER_KD);
-        targetRpm = SmartDashboard.getNumber(TUNING_PREFIX + "TargetRPM", SHOOTER_TARGET_RPM);
+    /** Read SmartDashboard PID values and push to TalonFX slot 0. Test mode only. */
+    private void updateSmartDashboardTuning() {
+        if (!DriverStation.isTest()) return;
+        Slot0Configs slot0 = new Slot0Configs()
+            .withKP(SmartDashboard.getNumber("Shooter/Tuning/kP", SHOOTER_KP))
+            .withKI(SmartDashboard.getNumber("Shooter/Tuning/kI", SHOOTER_KI))
+            .withKD(SmartDashboard.getNumber("Shooter/Tuning/kD", SHOOTER_KD))
+            .withKV(SmartDashboard.getNumber("Shooter/Tuning/kV", SHOOTER_KV));
+        shooterMotor.getConfigurator().apply(slot0);
+    }
 
-        if (kp != lastKp || ki != lastKi || kd != lastKd) {
-            shooterPid.setPID(kp, ki, kd);
-            lastKp = kp;
-            lastKi = ki;
-            lastKd = kd;
-        }
+    private void logTelemetry() {
+        SmartDashboard.putNumber("Shooter/Current RPM", getCurrentRPM());
+        SmartDashboard.putNumber("Shooter/Target RPM", targetRPM);
+        SmartDashboard.putNumber("Shooter/Target Distance (ft)", currentTargetDistance);
+        SmartDashboard.putNumber("Shooter/Motor Current (A)",
+            shooterMotor.getSupplyCurrent().getValueAsDouble());
+        SmartDashboard.putNumber("Feeder/Motor Current (A)", feederMotor.getOutputCurrent());
+        SmartDashboard.putBoolean("Shooter/At Target Speed", isAtTargetSpeed());
+        SmartDashboard.putBoolean("Shooter/Ball Detected", hasBall());
+        SmartDashboard.putBoolean("Shooter/Can Shoot", canShoot());
+        SmartDashboard.putBoolean("Feeder/Jam Clearing", currentState == ShooterState.JAM_CLEAR);
+        SmartDashboard.putString("Shooter/State", currentState.name());
     }
 }

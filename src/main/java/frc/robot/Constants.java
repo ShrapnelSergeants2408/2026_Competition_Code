@@ -27,7 +27,8 @@ import edu.wpi.first.math.numbers.N3;
 public final class Constants {
 
     public static class OperatorConstants {
-        public static final int kDriverControllerPort = 0;
+        public static final int DRIVER_CONTROLLER_PORT = 0;
+        public static final int OPERATOR_CONTROLLER_PORT = 1;
     }
 
     public static class ClimberConstants {}
@@ -58,22 +59,49 @@ public final class Constants {
 
     public static class ShooterConstants {
 
-        public static final int STALL_LIMIT = 30;
         // CAN IDs
-        public static final int SHOOTER_MOTOR_ID = 30;
-        public static final int FEEDER_MOTOR_ID = 31;
+        public static final int SHOOTER_MOTOR_ID = 30;  // TalonFX (Phoenix 6)
+        public static final int FEEDER_MOTOR_ID = 40;   // SparkMAX — doubles as intake and feeder
 
-        // Motor speeds
-        public static final double SHOOTER_SPEED = 0.9; // Shoots the ball
-        public static final double FEEDER_SPEED = 0.6; // Feeds ball into shooter
+        // Motor inversion — verify polarity on bench, flip here if wrong
+        public static final boolean SHOOTER_INVERTED = false; // TODO: verify on bench
+        public static final boolean FEEDER_INVERTED = false;  // TODO: verify on bench
+
+        // Feeder/intake open-loop duty cycle speeds (single SparkMAX, direction determines operation)
+        public static final double INTAKE_SPEED = 0.5;   // Drawing ball in
+        public static final double FEEDER_SPEED = 0.6;  // Pushing ball into shooter (slightly faster)
+        public static final double EJECT_SPEED = -0.5;  // Ejecting ball out
+        public static final double JAM_REVERSE_SPEED = -0.5; // Jam-clear reverse
         public static final double NOMINAL_VOLTAGE = 12;
 
-        // PID tuning (defaults are intentionally conservative)
-        public static final double SHOOTER_KP = 0.0;
-        public static final double SHOOTER_KI = 0.0;
-        public static final double SHOOTER_KD = 0.0;
-        public static final double SHOOTER_TARGET_RPM = 3000.0;
-        public static final boolean SHOOTER_USE_PID = false;
+        // Current limits
+        public static final int SHOOTER_CURRENT_LIMIT = 40; // TalonFX stator limit (amps)
+        public static final int FEEDER_CURRENT_LIMIT = 30;  // SparkMAX smart current limit (amps)
+
+        // Jam detection (feeder/intake SparkMAX)
+        public static final double FEEDER_SPIKE_THRESHOLD_AMPS = 35.0; // current spike triggers jam clear
+        public static final double JAM_REVERSE_TIME_SEC = 0.25;         // duration of jam-clear reverse
+
+        // Shooter PID / feedforward — Phoenix 6 on-controller slot 0
+        public static final double TARGET_RPM_10_FEET = 2950.0;
+        public static final double SHOOTER_KP = 0.0;       // proportional (starting value)
+        public static final double SHOOTER_KI = 0.0;       // integral
+        public static final double SHOOTER_KD = 0.0;       // derivative
+        public static final double SHOOTER_KV = 0.12;      // feedforward (tune first)
+        public static final double RPM_TOLERANCE = 50.0;   // within ±50 RPM is considered ready
+
+        // Distance to RPM mapping (distance in feet -> target RPM)
+        // Adjust RPMs based on shooter testing
+        public static final double[] DISTANCES_FEET = {5, 7.5, 12.5, 15, 17.5, 20};
+        public static final double[] DISTANCE_RPM_MAP = {2500, 2700, 2950, 3100, 3200, 3300};
+    }
+
+    public static class SensorConstants {
+        // Photo sensor (ball detection) — DIO port 1
+        // Set PHOTO_SENSOR_ENABLED = true once the sensor is physically installed
+        public static final int PHOTO_SENSOR_DIO_PORT = 1;
+        public static final boolean PHOTO_SENSOR_ENABLED = false;   // disabled until installed
+        public static final boolean PHOTO_SENSOR_INVERTED = false;  // TODO: verify polarity on bench
     }
 
     public static class Auto {

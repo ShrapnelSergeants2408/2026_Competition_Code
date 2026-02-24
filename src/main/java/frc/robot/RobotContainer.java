@@ -4,7 +4,6 @@
 
 package frc.robot;
 
-import static frc.robot.Constants.ShooterConstants.NOMINAL_VOLTAGE;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
@@ -20,7 +19,6 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.DriveTrain;
-import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Vision;
 
@@ -36,11 +34,8 @@ public class RobotContainer {
   // Climber subsystem
   private final Climber climber = new Climber();
 
-  // Intake subsystem
-  private final Intake intake = new Intake();
-
-  // Shooter subsystem
-  private final Shooter shooter = new Shooter(NOMINAL_VOLTAGE);
+  // Shooter subsystem (unified — owns shooter wheel, feeder, and intake)
+  private final Shooter shooter = new Shooter();
 
   // Vision subsystem (must be constructed before DriveTrain)
   private final Vision vision = new Vision();
@@ -51,9 +46,13 @@ public class RobotContainer {
   // Driver camera (USB webcam) — may be null if no camera is present at startup.
   private final UsbCamera driverCamera;
 
-  // Replace with CommandPS4Controller or CommandJoystick if needed
+  // Driver controller — drive motions only (port 0)
   private final CommandXboxController m_driverController =
-      new CommandXboxController(OperatorConstants.kDriverControllerPort);
+      new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
+
+  // Operator controller — all intake and shooting operations (port 1)
+  private final CommandXboxController m_operatorController =
+      new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
 
   // Autonomous chooser
   private final SendableChooser<Command> autoChooser;
@@ -100,18 +99,65 @@ public class RobotContainer {
 
   /**
    * Configure button-to-command bindings.
-   * Back button: toggle between Tank and Arcade drive modes.
-   * Start button: toggle between Field-Oriented and Robot-Relative orientation.
+   *
+   * Driver (port 0) — drive motions only:
+   *   Back  = toggle Tank / Arcade drive mode
+   *   Start = toggle Field-Oriented / Robot-Relative orientation
+   *
+   * Operator (port 1) — all intake and shooting operations:
+   *   X        = shoot (spin up + feed when ready, hold)
+   *   B        = stop all (shooter + feeder)
+   *   Y        = manual feed (bypasses speed gate, hold)
+   *   RT       = feed-when-ready (hold — requires shooter at speed)
+   *   LT       = intake (draw ball in, hold)
+   *   LB       = eject (reverse feeder, hold)
+   *   POV Up   = distance preset 15 ft
+   *   POV Down = distance preset 10 ft
+   *   POV Left = distance preset  7.5 ft
+   *   POV Right= distance preset 12.5 ft
    */
   private void configureBindings() {
-    // Back button (select): toggle Tank <-> Arcade
+    // ── Driver ────────────────────────────────────────────────────────────────
+    // Back (select): toggle Tank <-> Arcade
     m_driverController.back().onTrue(
         Commands.runOnce(() -> drivetrain.toggleDriveMode(), drivetrain)
     );
-
-    // Start button (menu): toggle Field-Oriented <-> Robot-Relative
+    // Start (menu): toggle Field-Oriented <-> Robot-Relative
     m_driverController.start().onTrue(
         Commands.runOnce(() -> drivetrain.toggleOrientationMode(), drivetrain)
+    );
+
+    // ── Operator ──────────────────────────────────────────────────────────────
+    // X: spin up to target RPM and feed automatically when ready
+    m_operatorController.x().whileTrue(shooter.shootCommand());
+
+    // B: immediately stop shooter and feeder
+    m_operatorController.b().onTrue(shooter.stopAllCommand());
+
+    // Y: manual feed — bypasses speed gate, use with caution
+    m_operatorController.y().whileTrue(shooter.manualFeedCommand());
+
+    // RT: feed-when-ready — feeder runs only while shooter is at speed
+    m_operatorController.rightTrigger().whileTrue(shooter.feedCommand());
+
+    // LT: intake — draw ball in
+    m_operatorController.leftTrigger().whileTrue(shooter.intakeCommand());
+
+    // LB: eject — reverse feeder to clear ball
+    m_operatorController.leftBumper().whileTrue(shooter.ejectCommand());
+
+    // POV: distance presets — stages the RPM target without spinning the motor
+    m_operatorController.povUp().onTrue(
+        Commands.runOnce(() -> shooter.setDistancePreset(15.0))
+    );
+    m_operatorController.povDown().onTrue(
+        Commands.runOnce(() -> shooter.setDistancePreset(10.0))
+    );
+    m_operatorController.povLeft().onTrue(
+        Commands.runOnce(() -> shooter.setDistancePreset(7.5))
+    );
+    m_operatorController.povRight().onTrue(
+        Commands.runOnce(() -> shooter.setDistancePreset(12.5))
     );
   }
 
