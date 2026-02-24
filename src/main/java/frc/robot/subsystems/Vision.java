@@ -49,7 +49,8 @@ public class Vision extends SubsystemBase {
     // Per-loop caches — computed once in periodic(), read by all callers this cycle.
     // INEFF-01/04/07: prevents cameras from being processed more than once per 20 ms loop.
     private Optional<VisionMeasurement> cachedMeasurement = Optional.empty();
-    private List<Integer> cachedVisibleTags = List.of();
+    // INEFF-03: boolean array indexed by tag ID (1–30). O(1) lookup with no boxing.
+    private boolean[] cachedTagsVisible = new boolean[31];
     private Optional<PhotonPipelineResult> cachedFrontResult = Optional.empty();
     private Optional<PhotonPipelineResult> cachedRearResult = Optional.empty();
 
@@ -347,49 +348,60 @@ public class Vision extends SubsystemBase {
 
     /**
      * Check if a specific AprilTag is visible in any camera.
-     * INEFF-06: reads the cached tag list — no new ArrayList allocation.
+     * INEFF-03: O(1) bounds-checked array access; no boxing, no linear scan.
      */
     public boolean isTagVisible(int tagId) {
-        return cachedVisibleTags.contains(tagId);
+        return tagId >= 1 && tagId <= 30 && cachedTagsVisible[tagId];
     }
 
     /**
-     * Returns the cached list of all visible AprilTag IDs from all cameras.
-     * INEFF-04: no per-call ArrayList allocation; list is built once in periodic().
+     * Returns a list of all currently visible AprilTag IDs from all cameras.
+     * Built on demand from the boolean array; allocation only happens when a caller
+     * actually needs the list (typically telemetry, not hot-path code).
      */
     public List<Integer> getVisibleTags() {
-        return cachedVisibleTags;
+        List<Integer> tags = new ArrayList<>();
+        for (int i = 1; i <= 30; i++) {
+            if (cachedTagsVisible[i]) tags.add(i);
+        }
+        return tags;
     }
 
     /**
-     * Builds the visible tag list from both cameras.
-     * Called exactly once per loop from periodic(); result stored in cachedVisibleTags.
+     * Builds the visible-tag boolean array from both cameras.
+     * Called once per loop from periodic() when a new frame has arrived.
+     * INEFF-03: single-pass fill; writing true to an already-set slot is a no-op,
+     * so the former O(n²) rear-camera deduplication loop is eliminated entirely.
      */
-    private List<Integer> computeVisibleTags() {
-        List<Integer> visibleTags = new ArrayList<>();
+    private boolean[] computeVisibleTags() {
+        boolean[] visible = new boolean[31];
 
         var frontResult = getFrontResult();
         if (frontResult.hasTargets()) {
-            frontResult.getTargets().forEach(target -> visibleTags.add(target.getFiducialId()));
+            for (var target : frontResult.getTargets()) {
+                int id = target.getFiducialId();
+                if (id >= 1 && id <= 30) visible[id] = true;
+            }
         }
 
         var rearResult = getRearResult();
         if (rearResult.hasTargets()) {
-            rearResult.getTargets().forEach(target -> {
-                if (!visibleTags.contains(target.getFiducialId())) {
-                    visibleTags.add(target.getFiducialId());
-                }
-            });
+            for (var target : rearResult.getTargets()) {
+                int id = target.getFiducialId();
+                if (id >= 1 && id <= 30) visible[id] = true;
+            }
         }
 
-        return visibleTags;
+        return visible;
     }
 
     /**
      * Get distance from current best pose estimate to a target pose.
      */
     public Optional<Double> getDistanceToPose(Pose2d targetPose) {
-        return getBestVisionMeasurement()
+        // BUG-08: use fresh-gated measurement so commands don't act on data up to
+        // MAX_VISION_AGE_SECONDS old.
+        return getBestVisionMeasurementIfFresh()
             .map(measurement ->
                 measurement.estimatedPose().getTranslation().getDistance(targetPose.getTranslation())
             );
@@ -399,7 +411,8 @@ public class Vision extends SubsystemBase {
      * Get yaw angle from current best pose estimate to a target pose.
      */
     public Optional<Rotation2d> getYawToPose(Pose2d targetPose) {
-        return getBestVisionMeasurement()
+        // BUG-08: same freshness gate as getDistanceToPose.
+        return getBestVisionMeasurementIfFresh()
             .map(measurement -> {
                 var currentPose = measurement.estimatedPose();
                 var translation = targetPose.getTranslation().minus(currentPose.getTranslation());
@@ -509,9 +522,10 @@ public class Vision extends SubsystemBase {
         SmartDashboard.putBoolean("Vision/FrontCamConnected", isCameraConnected(frontCamera));
         SmartDashboard.putBoolean("Vision/RearCamConnected", isCameraConnected(rearCamera));
 
-        // Visible tags — read from per-loop cache (INEFF-04)
-        SmartDashboard.putNumber("Vision/NumTagsVisible", cachedVisibleTags.size());
-        SmartDashboard.putString("Vision/VisibleTags", cachedVisibleTags.toString());
+        // Visible tags — built on demand from the boolean array (INEFF-03)
+        List<Integer> visibleTagList = getVisibleTags();
+        SmartDashboard.putNumber("Vision/NumTagsVisible", visibleTagList.size());
+        SmartDashboard.putString("Vision/VisibleTags", visibleTagList.toString());
 
         // Best measurement — read from per-loop cache (INEFF-01)
         Optional<VisionMeasurement> bestMeasurement = cachedMeasurement;
@@ -628,9 +642,17 @@ public class Vision extends SubsystemBase {
         cachedFrontResult = Optional.of(frontCamera.getLatestResult());
         cachedRearResult = Optional.of(rearCamera.getLatestResult());
 
-        // INEFF-01/04: compute once per loop; every caller this cycle reads the cache.
-        cachedMeasurement  = computeBestVisionMeasurement();
-        cachedVisibleTags  = computeVisibleTags();
+        // INEFF-04: skip heavy recomputation when neither camera has produced a new frame.
+        // lastFrontTimestamp / lastRearTimestamp are updated inside updateCameraFreshness(),
+        // which runs as part of computeBestVisionMeasurement(), so they always hold the
+        // timestamp of the last frame that was actually processed.
+        double frontTs = cachedFrontResult.get().getTimestampSeconds();
+        double rearTs  = cachedRearResult.get().getTimestampSeconds();
+        if (frontTs > lastFrontTimestamp || rearTs > lastRearTimestamp) {
+            cachedMeasurement = computeBestVisionMeasurement();
+            cachedTagsVisible = computeVisibleTags();
+        }
+
         if (++telemetryLoopCounter >= VisionConstants.TELEMETRY_PERIOD_LOOPS) {
             telemetryLoopCounter = 0;
             updateTelemetry();
