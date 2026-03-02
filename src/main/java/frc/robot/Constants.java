@@ -59,28 +59,40 @@ public final class Constants {
     public static class ShooterConstants {
 
         // CAN IDs
-        public static final int SHOOTER_MOTOR_ID = 30;  // TalonFX (Phoenix 6)
-        public static final int FEEDER_MOTOR_ID = 40;   // SparkMAX — doubles as intake and feeder
+        public static final int SHOOTER_MOTOR_ID = 30;  // TalonFX (Phoenix 6) — shooter wheel
+        public static final int INTAKE_MOTOR_ID  = 31;  // SparkMAX — intake roller (primary + secondary linked, CCW only)
+        public static final int TRIGGER_MOTOR_ID = 32;  // SparkMAX — trigger/hopper (bidirectional)
 
         // Motor inversion — verify polarity on bench, flip here if wrong
-        public static final boolean SHOOTER_INVERTED = false; // TODO: verify on bench
-        public static final boolean FEEDER_INVERTED = false;  // TODO: verify on bench
+        // Intake roller:  positive set() should = CCW (into robot)
+        // Trigger motor:  positive set() should = CW  (hopper → shooter)
+        public static final boolean SHOOTER_INVERTED       = false; // TODO: verify on bench
+        public static final boolean INTAKE_MOTOR_INVERTED  = false; // TODO: verify on bench; CCW must be positive
+        public static final boolean TRIGGER_MOTOR_INVERTED = false; // TODO: verify on bench; CW must be positive
 
-        // Feeder/intake open-loop duty cycle speeds (single SparkMAX, direction determines operation)
-        public static final double INTAKE_SPEED = 0.5;   // Drawing ball in
-        public static final double FEEDER_SPEED = 0.6;  // Pushing ball into shooter (slightly faster)
-        public static final double EJECT_SPEED = -0.5;  // Ejecting ball out
-        public static final double JAM_REVERSE_SPEED = -0.5; // Jam-clear reverse
+        // Intake roller (CAN 31) speeds — this motor runs CCW only
+        // Positive duty cycle = CCW (into robot) when INTAKE_MOTOR_INVERTED is set correctly
+        public static final double INTAKE_SPEED       = 0.5;  // CCW — pulls ball from ground into robot; also assists feeding into shooter
+        public static final double INTAKE_EJECT_SPEED = -0.5; // CW  — reverses to push ball back out through intake opening
+
+        // Trigger/hopper motor (CAN 32) speeds — bidirectional
+        // Positive duty cycle = CW (into shooter) when TRIGGER_MOTOR_INVERTED is set correctly
+        public static final double TRIGGER_FEED_SPEED   =  0.6;  // CW  — pushes ball from hopper into shooter
+        public static final double TRIGGER_INTAKE_SPEED = -0.5;  // CCW — pulls ball from intake roller into hopper
+        public static final double TRIGGER_EJECT_SPEED  = -0.5;  // CCW — moves ball from hopper back toward intake path
+        public static final double JAM_REVERSE_SPEED    = -0.5;  // CCW — trigger jam-clear reverse
+
         public static final double NOMINAL_VOLTAGE = 12;
         public static final int SHOOTER_TELEMETRY_PERIOD_LOOPS = 5;
 
         // Current limits
-        public static final int SHOOTER_CURRENT_LIMIT = 40; // TalonFX stator limit (amps)
-        public static final int FEEDER_CURRENT_LIMIT = 30;  // SparkMAX smart current limit (amps)
+        public static final int SHOOTER_CURRENT_LIMIT      = 40; // TalonFX stator limit (amps)
+        public static final int INTAKE_MOTOR_CURRENT_LIMIT = 30; // SparkMAX smart current limit (amps)
+        public static final int TRIGGER_MOTOR_CURRENT_LIMIT= 30; // SparkMAX smart current limit (amps)
 
-        // Jam detection (feeder/intake SparkMAX)
-        public static final double FEEDER_SPIKE_THRESHOLD_AMPS = 30.0; // current spike triggers jam clear
-        public static final double JAM_REVERSE_TIME_SEC = 0.25;         // duration of jam-clear reverse
+        // Jam detection (trigger motor — most likely jam point)
+        public static final double TRIGGER_SPIKE_THRESHOLD_AMPS = 30.0; // current spike triggers jam clear
+        public static final double JAM_REVERSE_TIME_SEC = 0.25;          // duration of jam-clear reverse
 
         // Shooter PID / feedforward — Phoenix 6 on-controller slot 0
         public static final double TARGET_RPM_10_FEET = 2950.0;

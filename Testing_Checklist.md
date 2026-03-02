@@ -64,17 +64,18 @@ Before any power-up:
 
 ### **3. Update SparkMAX Firmware and CAN IDs (REV Hardware Client)**
 
-**Flash all four SparkMAX motor controllers to the latest 2026 REV firmware and set their CAN IDs.**
+**Flash all six SparkMAX motor controllers to the latest 2026 REV firmware and set their CAN IDs.**
 
 Required CAN IDs from `Constants.DriveTrainConstants` and `Constants.ShooterConstants`:
 
-| Motor                  | CAN ID | Location          |
-|------------------------|--------|-------------------|
-| Left Drive Lead        | **20** | DriveTrain        |
-| Left Drive Follow      | **21** | DriveTrain        |
-| Right Drive Lead       | **22** | DriveTrain        |
-| Right Drive Follow     | **23** | DriveTrain        |
-| Feeder/Intake Motor    | **40** | Shooter subsystem |
+| Motor                   | CAN ID | Location          | Direction          |
+|-------------------------|--------|-------------------|--------------------|
+| Left Drive Lead         | **20** | DriveTrain        | —                  |
+| Left Drive Follow       | **21** | DriveTrain        | Follows CAN 20     |
+| Right Drive Lead        | **22** | DriveTrain        | —                  |
+| Right Drive Follow      | **23** | DriveTrain        | Follows CAN 22     |
+| Intake Roller           | **31** | Shooter subsystem | CCW only (into robot) |
+| Trigger / Hopper Motor  | **32** | Shooter subsystem | CCW = intake→hopper; CW = hopper→shooter |
 
 **Steps for each SparkMAX:**
 1. Install **REV Hardware Client** (latest 2026 version) on the pit laptop.
@@ -88,7 +89,8 @@ Required CAN IDs from `Constants.DriveTrainConstants` and `Constants.ShooterCons
 - [ ] Left Drive Follow (CAN 21) firmware updated and CAN ID set
 - [ ] Right Drive Lead (CAN 22) firmware updated and CAN ID set
 - [ ] Right Drive Follow (CAN 23) firmware updated and CAN ID set
-- [ ] Feeder/Intake SparkMAX (CAN 40) firmware updated and CAN ID set
+- [ ] Intake Roller SparkMAX (CAN 31) firmware updated and CAN ID set
+- [ ] Trigger/Hopper SparkMAX (CAN 32) firmware updated and CAN ID set
 
 ---
 
@@ -147,15 +149,16 @@ Required CAN ID from `Constants.ShooterConstants`:
 1. Power on the robot fully (main breaker on).
 2. Connect via USB to the roboRIO (do not enable yet).
 3. Open **REV Hardware Client** — verify the following devices appear:
-   - SparkMAX CAN 20, 21, 22, 23 (green/connected)
-   - SparkMAX CAN 40 (green/connected)
+   - SparkMAX CAN 20, 21, 22, 23 (green/connected) — drivetrain
+   - SparkMAX CAN 31 (green/connected) — intake roller
+   - SparkMAX CAN 32 (green/connected) — trigger/hopper
    - PDH CAN 1 (green/connected)
 4. Open **Phoenix Tuner X** — verify:
-   - TalonFX CAN 30 (connected, no faults)
+   - TalonFX CAN 30 (connected, no faults) — shooter wheel
 5. Open the **Driver Station** → **Messages** tab — confirm no CAN bus errors appear at startup.
 6. Open **SmartDashboard** or **Glass** — after deploying code, verify no "Device Not Found" errors in the console.
 
-- [ ] All 5 SparkMAX controllers visible on CAN bus
+- [ ] All 6 SparkMAX controllers visible on CAN bus
 - [ ] PDH visible on CAN bus
 - [ ] TalonFX visible on CAN bus
 - [ ] No CAN bus utilization errors (utilization < 90%)
@@ -344,7 +347,7 @@ Default mode: **Field-Oriented Tank** (left Y = left wheel, right Y = right whee
 2. Hold **X** on Operator Controller.
 3. Verify SmartDashboard:
    - `Shooter/State` = **"SPIN_UP"** initially
-   - Once RPM is at target, `Shooter/State` transitions to **"FEED"** and `Feeder/Motor Current` increases slightly (feeder motor running)
+   - Once RPM is at target, `Shooter/State` transitions to **"FEED"** and both `Intake/Motor Current` and `Trigger/Motor Current` increase (both feed motors running)
    - `Shooter/Can Shoot` turns **true** when ready
 4. Release X — shooter and feeder both stop, state returns to IDLE.
 
@@ -362,7 +365,7 @@ Default mode: **Field-Oriented Tank** (left Y = left wheel, right Y = right whee
 
 1. Spin up shooter with Y button first.
 2. Once `Shooter/RPM At Speed` is **true**, hold **RB**.
-3. Verify `Feeder/Motor Current` increases (feeder running).
+3. Verify `Intake/Motor Current` and `Trigger/Motor Current` both increase (both feed motors running).
 4. Release RB — feeder stops, shooter continues spinning.
 5. Press Y again to stop shooter.
 
@@ -406,64 +409,81 @@ RPM targets (from `Constants.ShooterConstants.DISTANCE_RPM_MAP`):
 
 ---
 
-## SECTION 7 — Feeder / Intake Tests
+## SECTION 7 — Intake / Trigger Tests
 
-> **SAFETY:** Keep fingers clear of the feeder/intake mechanism. The feeder motor (SparkMAX CAN 40) runs open-loop at duty cycles up to 60%.
+> **SAFETY:** Keep fingers clear of the intake and trigger mechanisms. Intake roller (CAN 31) runs open-loop CCW at 50%; trigger motor (CAN 32) runs open-loop at up to 60%. Both motors activate together during intake and feed operations.
 
 ### 7A — Intake Toggle (Operator LB)
 
-**Verify LB toggles intake on and off.**
+**Verify LB toggles intake on and off. Both the intake roller and trigger motor must run simultaneously.**
 
-| Button  | Controller   | Action                              |
-|---------|--------------|-------------------------------------|
-| **LB**  | Operator (1) | Toggle intake — draws ball in       |
+| Button  | Controller   | Action                                                   |
+|---------|--------------|----------------------------------------------------------|
+| **LB**  | Operator (1) | Toggle intake — intake roller CCW + trigger CCW together |
 
 1. Enable in Test mode.
-2. Press **LB** — feeder motor should run **forward** at 50% duty cycle (INTAKE_SPEED = 0.5).
+2. Press **LB**:
+   - Intake roller (CAN 31) should run **CCW** at 50% (INTAKE_SPEED = 0.5) — physically pulling ball from ground into robot
+   - Trigger motor (CAN 32) should run **CCW** at 50% (TRIGGER_INTAKE_SPEED = -0.5) — pulling ball from intake into hopper
 3. Verify `Shooter/State` = **"INTAKE"** and `Shooter/Intake Active` = **true** on SmartDashboard.
-4. Press **LB** again — feeder stops, `Shooter/Intake Active` = **false**, state = **"IDLE"**.
+4. Verify both `Intake/Motor Current` and `Trigger/Motor Current` show non-zero values (both motors spinning).
+5. With no load, verify intake roller spins in the correct direction (toward the robot) and trigger spins inward (toward hopper).
+6. Press **LB** again — both motors stop, `Shooter/Intake Active` = **false**, state = **"IDLE"**.
 
-- [ ] LB starts intake (feeder forward at 50%)
-- [ ] SmartDashboard "Intake Active" turns true
-- [ ] Second LB press stops intake
+- [ ] LB starts both intake roller (CAN 31, CCW) and trigger motor (CAN 32, CCW) simultaneously
+- [ ] `Shooter/Intake Active` turns true on SmartDashboard
+- [ ] `Intake/Motor Current` shows non-zero (intake roller running)
+- [ ] `Trigger/Motor Current` shows non-zero (trigger running)
+- [ ] Intake roller direction is physically correct — pulling ball inward
+- [ ] Trigger direction is physically correct — moving ball toward hopper
+- [ ] Second LB press stops both motors
 - [ ] State returns to IDLE after stop
 
 ### 7B — Eject Toggle (Operator LT)
 
-**Verify LT toggles eject on and off.**
+**Verify LT toggles eject on and off. Intake roller reverses (CW) and trigger runs CCW to push ball back out through the intake opening.**
 
-| Button  | Controller   | Action                              |
-|---------|--------------|-------------------------------------|
-| **LT**  | Operator (1) | Toggle eject — reverses feeder      |
+| Button  | Controller   | Action                                                                |
+|---------|--------------|-----------------------------------------------------------------------|
+| **LT**  | Operator (1) | Toggle eject — intake roller CW (reverse) + trigger CCW (back toward intake) |
 
 1. Enable in Test mode.
-2. Press **LT** (Left Trigger) past the activation threshold — feeder motor should run **reverse** at 50% (EJECT_SPEED = -0.5).
+2. Press **LT** (Left Trigger) past the activation threshold:
+   - Intake roller (CAN 31) should run **CW** at 50% (INTAKE_EJECT_SPEED = -0.5) — reversing to push ball back out
+   - Trigger motor (CAN 32) should run **CCW** at 50% (TRIGGER_EJECT_SPEED = -0.5) — moving ball from hopper back toward intake path
 3. Verify `Shooter/State` = **"EJECT"** and `Shooter/Eject Active` = **true** on SmartDashboard.
-4. Press **LT** again — feeder stops, state = **"IDLE"**.
+4. Verify both `Intake/Motor Current` and `Trigger/Motor Current` show non-zero values.
+5. Verify intake roller physically spins the opposite direction from intake mode (CW = outward).
+6. Press **LT** again — both motors stop, state = **"IDLE"**.
 
-- [ ] LT starts eject (feeder reverse at 50%)
-- [ ] SmartDashboard "Eject Active" turns true
-- [ ] Second LT press stops eject
+- [ ] LT starts intake roller in reverse (CAN 31, CW) and trigger in CCW (CAN 32)
+- [ ] `Shooter/Eject Active` turns true on SmartDashboard
+- [ ] Intake roller physically reverses direction compared to intake mode
+- [ ] Second LT press stops both motors
 - [ ] State returns to IDLE
 
 ### 7C — Jam Detection Test
 
-**Verify automatic jam detection triggers a brief reverse to clear the feeder.**
+**Verify automatic jam detection on the trigger motor triggers a brief reverse to clear the jam.**
 
-> Jam clears automatically when feeder current exceeds **30A** for more than 100 ms. The feeder reverses at 50% for 0.25 seconds then resumes.
+> Jam clears automatically when **trigger motor** (CAN 32) current exceeds **30A** for more than 100 ms. During jam clear: intake motor stops, trigger reverses CCW at 50% for 0.25 seconds, then both motors resume their previous state.
 
 1. Enable intake with LB.
-2. Manually stall the feeder mechanism (hold a game piece firmly against it to spike current).
-3. Observe SmartDashboard — when current exceeds 30A for 100 ms, `Feeder/Jam Clearing` should turn **true** briefly (~0.25 sec).
-4. After 0.25 seconds, jam clear ends and intake resumes.
+2. Manually stall the trigger mechanism (hold a game piece firmly against it to spike current above 30A).
+3. Observe SmartDashboard:
+   - `Trigger/Motor Current` should spike above 30A
+   - After 100 ms, `Trigger/Jam Clearing` should turn **true**
+   - `Intake/Motor Current` should drop to 0 (intake motor stops during jam clear)
+4. After 0.25 seconds, jam clear ends — both motors resume intake speeds automatically.
 5. Release game piece.
 
 > **Note:** If testing without a game piece, this step may be skipped and verified in game-piece integration testing.
 
-- [ ] Jam clear triggers when feeder current spikes above 30A
-- [ ] "Feeder/Jam Clearing" indicator activates on SmartDashboard
-- [ ] Feeder reverses briefly then resumes intake automatically
-- [ ] Feeder Motor Current visible and plausible on SmartDashboard
+- [ ] Jam clear triggers when `Trigger/Motor Current` spikes above 30A for 100 ms
+- [ ] `Trigger/Jam Clearing` indicator turns true on SmartDashboard
+- [ ] Intake motor stops during jam clear (`Intake/Motor Current` drops to 0)
+- [ ] Trigger motor reverses CCW briefly (~0.25 sec) then resumes intake direction
+- [ ] Both motors resume normal intake operation after jam clear completes
 
 ---
 
@@ -679,8 +699,9 @@ Open SmartDashboard and confirm all keys below are visible and updating during o
 - [ ] `Shooter/Eject Active`
 - [ ] `Shooter/Ball Detected`
 - [ ] `Shooter/State`
-- [ ] `Feeder/Motor Current (A)`
-- [ ] `Feeder/Jam Clearing`
+- [ ] `Intake/Motor Current (A)` — intake roller (CAN 31)
+- [ ] `Trigger/Motor Current (A)` — trigger motor (CAN 32)
+- [ ] `Trigger/Jam Clearing`
 - [ ] `Shooter/Tuning/kP`, `kI`, `kD`, `kV`
 
 **Vision:**
@@ -784,7 +805,7 @@ Open SmartDashboard and confirm all keys below are visible and updating during o
 | **B** button    | Emergency stop — immediately stop shooter and feeder  |
 | **A** button    | Clear POV distance preset → automatic distance        |
 | **LB**          | Toggle intake — draw ball in                          |
-| **LT**          | Toggle eject — reverse feeder to expel ball           |
+| **LT**          | Toggle eject — intake roller CW + trigger CCW to expel ball |
 | **POV Up**      | Stage 15.0 ft distance preset (3100 RPM target)       |
 | **POV Down**    | Stage 10.0 ft distance preset (~2825 RPM target)      |
 | **POV Left**    | Stage 7.5 ft distance preset (2700 RPM target)        |
@@ -794,15 +815,16 @@ Open SmartDashboard and confirm all keys below are visible and updating during o
 
 ## QUICK REFERENCE — CAN IDs
 
-| Device                  | CAN ID | Type     | Tool          |
-|-------------------------|--------|----------|---------------|
-| Power Distribution Hub  | 1      | REV PDH  | REV Hardware Client |
-| Left Drive Lead         | 20     | SparkMAX | REV Hardware Client |
-| Left Drive Follow       | 21     | SparkMAX | REV Hardware Client |
-| Right Drive Lead        | 22     | SparkMAX | REV Hardware Client |
-| Right Drive Follow      | 23     | SparkMAX | REV Hardware Client |
-| Shooter Wheel           | 30     | TalonFX  | Phoenix Tuner X |
-| Feeder / Intake         | 40     | SparkMAX | REV Hardware Client |
+| Device                  | CAN ID | Type     | Tool                | Notes                        |
+|-------------------------|--------|----------|---------------------|------------------------------|
+| Power Distribution Hub  | 1      | REV PDH  | REV Hardware Client |                              |
+| Left Drive Lead         | 20     | SparkMAX | REV Hardware Client |                              |
+| Left Drive Follow       | 21     | SparkMAX | REV Hardware Client | Follows CAN 20               |
+| Right Drive Lead        | 22     | SparkMAX | REV Hardware Client |                              |
+| Right Drive Follow      | 23     | SparkMAX | REV Hardware Client | Follows CAN 22               |
+| Shooter Wheel           | 30     | TalonFX  | Phoenix Tuner X     | CW only                      |
+| Intake Roller           | 31     | SparkMAX | REV Hardware Client | CCW only (intake & shoot assist) |
+| Trigger / Hopper Motor  | 32     | SparkMAX | REV Hardware Client | CCW = intake; CW = feed      |
 
 ---
 
@@ -810,14 +832,17 @@ Open SmartDashboard and confirm all keys below are visible and updating during o
 
 | Constant                  | Value         | Notes                                |
 |---------------------------|---------------|--------------------------------------|
-| Shooter current limit     | 40 A          | TalonFX stator limit                 |
-| Feeder current limit      | 30 A          | SparkMAX smart current limit         |
-| Drive current limit       | 40 A          | SparkMAX smart current limit each    |
-| Joystick deadband         | 0.05          |                                      |
-| Intake speed              | 0.50 (50%)    | Feeder motor forward duty cycle      |
-| Feeder speed              | 0.60 (60%)    | Feeder motor pushing ball to shooter |
-| Eject speed               | -0.50 (-50%)  | Feeder motor reverse                 |
-| Jam threshold             | 30 A          | Feeder current spike triggers clear  |
+| Shooter current limit        | 40 A          | TalonFX stator limit (CAN 30)                               |
+| Intake motor current limit   | 30 A          | SparkMAX smart current limit (CAN 31)                       |
+| Trigger motor current limit  | 30 A          | SparkMAX smart current limit (CAN 32)                       |
+| Drive current limit          | 40 A          | SparkMAX smart current limit each (CAN 20–23)               |
+| Joystick deadband            | 0.05          |                                                             |
+| Intake roller speed          | 0.50 (50%)    | CAN 31, CCW — same direction for both intake AND shoot assist|
+| Intake roller eject speed    | -0.50 (-50%)  | CAN 31, CW — reverses to push ball back out intake          |
+| Trigger feed speed           | 0.60 (60%)    | CAN 32, CW — pushes ball from hopper into shooter           |
+| Trigger intake speed         | -0.50 (-50%)  | CAN 32, CCW — pulls ball from intake into hopper            |
+| Trigger eject speed          | -0.50 (-50%)  | CAN 32, CCW — moves ball from hopper back toward intake     |
+| Jam threshold                | 30 A          | Trigger motor (CAN 32) current spike triggers clear         |
 | Jam reverse duration      | 0.25 sec      |                                      |
 | RPM tolerance             | ±50 RPM       | "At speed" window                    |
 | Photo sensor DIO port     | 1             | Currently disabled                   |
