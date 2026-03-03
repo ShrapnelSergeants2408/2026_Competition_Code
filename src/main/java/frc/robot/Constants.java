@@ -75,6 +75,10 @@ public final class Constants {
         public static final double INTAKE_SPEED       = 0.5;  // CCW — pulls ball from ground into robot; also assists feeding into shooter
         public static final double INTAKE_EJECT_SPEED = -0.5; // CW  — reverses to push ball back out through intake opening
 
+        //Account for shooter gearin
+        public static final double SHOOTER_MOTOR_GEAR = 30.0; //30T pulley
+        public static final double SHOOTER_SHAFT_GEAR = 15.0; //15T pulley -- waiting for 18T pulley
+        public static final double SHOOTER_GEAR_RATIO = SHOOTER_SHAFT_GEAR / SHOOTER_MOTOR_GEAR;
         // Trigger/hopper motor (CAN 32) speeds — bidirectional
         // Positive duty cycle = CW (into shooter) when TRIGGER_MOTOR_INVERTED is set correctly
         public static final double TRIGGER_FEED_SPEED   =  0.6;  // CW  — pushes ball from hopper into shooter
