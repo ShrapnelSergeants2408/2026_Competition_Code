@@ -42,6 +42,13 @@ public class Shooter extends SubsystemBase {
     private double targetRPM = TARGET_RPM_10_FEET;
     private double currentTargetDistance = 10.0;
 
+    // Cached tuning values — apply() is only called when a value actually changes,
+    // avoiding a blocking CAN write every loop iteration.
+    private double cachedKP = SHOOTER_KP;
+    private double cachedKI = SHOOTER_KI;
+    private double cachedKD = SHOOTER_KD;
+    private double cachedKV = SHOOTER_KV;
+
     // ── Distance resolution ───────────────────────────────────────────────────
     private final Vision vision;
     private final DriveTrain drivetrain;
@@ -297,15 +304,21 @@ public class Shooter extends SubsystemBase {
         }
     }
 
-    /** Read SmartDashboard PID values and push to TalonFX slot 0. Test mode only. */
+    /**
+     * Read SmartDashboard PID values and push to TalonFX slot 0. Test mode only.
+     * apply() is a blocking CAN call (~10–100 ms) so it is only invoked when at
+     * least one value has actually changed, preventing loop overruns.
+     */
     private void updateSmartDashboardTuning() {
         if (!DriverStation.isTest()) return;
-        Slot0Configs slot0 = new Slot0Configs()
-            .withKP(SmartDashboard.getNumber("Shooter/Tuning/kP", SHOOTER_KP))
-            .withKI(SmartDashboard.getNumber("Shooter/Tuning/kI", SHOOTER_KI))
-            .withKD(SmartDashboard.getNumber("Shooter/Tuning/kD", SHOOTER_KD))
-            .withKV(SmartDashboard.getNumber("Shooter/Tuning/kV", SHOOTER_KV));
-        shooterMotor.getConfigurator().apply(slot0);
+        double kP = SmartDashboard.getNumber("Shooter/Tuning/kP", SHOOTER_KP);
+        double kI = SmartDashboard.getNumber("Shooter/Tuning/kI", SHOOTER_KI);
+        double kD = SmartDashboard.getNumber("Shooter/Tuning/kD", SHOOTER_KD);
+        double kV = SmartDashboard.getNumber("Shooter/Tuning/kV", SHOOTER_KV);
+        if (kP == cachedKP && kI == cachedKI && kD == cachedKD && kV == cachedKV) return;
+        cachedKP = kP; cachedKI = kI; cachedKD = kD; cachedKV = kV;
+        shooterMotor.getConfigurator().apply(
+            new Slot0Configs().withKP(kP).withKI(kI).withKD(kD).withKV(kV));
     }
 
     private void logTelemetry() {

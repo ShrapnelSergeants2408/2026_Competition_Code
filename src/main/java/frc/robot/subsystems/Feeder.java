@@ -3,8 +3,8 @@ package frc.robot.subsystems;
 import static frc.robot.Constants.SensorConstants.*;
 import static frc.robot.Constants.ShooterConstants.*;
 
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;

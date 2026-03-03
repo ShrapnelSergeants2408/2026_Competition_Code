@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Result;
 import frc.robot.VisionMeasurement;
 
+
 import com.studica.frc.AHRS;
 
 import static frc.robot.Constants.DriveTrainConstants.*;
@@ -36,10 +37,11 @@ import com.pathplanner.lib.controllers.PPLTVController;
 import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 
@@ -135,33 +137,39 @@ public class DriveTrain extends SubsystemBase {
         // Encoder conversion factors are set on the primary (built-in hall) encoder so that
         // getPosition() returns meters and getVelocity() returns m/s directly.
         SparkMaxConfig rightLeadConfig = new  SparkMaxConfig();
-        rightLeadConfig.inverted(true);
-        rightLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
-        rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
-        rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
-        rightMotorLead.configure(rightLeadConfig,
-            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+            rightLeadConfig.inverted(true);
+            rightLeadConfig.idleMode(IdleMode.kCoast);
+            rightLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
+            rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
+            rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
+            rightMotorLead.configure(   rightLeadConfig,
+                                        ResetMode.kResetSafeParameters, 
+                                        PersistMode.kPersistParameters);
 
         // Left lead
         SparkMaxConfig leftLeadConfig = new SparkMaxConfig();
-        leftLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
-        leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
-        leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
-        leftMotorLead.configure(leftLeadConfig,
-            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+            leftLeadConfig.inverted(false);
+            leftLeadConfig.idleMode(IdleMode.kCoast);
+            leftLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
+            leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
+            leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
+            leftMotorLead.configure(leftLeadConfig,
+                ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
         // Follow motors mirror their respective leads
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
-        leftFollowConfig.follow(leftMotorLead);
-        leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
-        leftMotorFollow.configure(leftFollowConfig,
-            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+            leftFollowConfig.follow(leftMotorLead);
+            //leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
+            leftMotorFollow.configure(  leftFollowConfig,
+                                        ResetMode.kResetSafeParameters,     
+                                        PersistMode.kPersistParameters);
 
         SparkMaxConfig rightFollowConfig = new SparkMaxConfig();
-        rightFollowConfig.follow(rightMotorLead);
-        rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
-        rightMotorFollow.configure(rightFollowConfig,
-            ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+            rightFollowConfig.follow(rightMotorLead);
+            //rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
+            rightMotorFollow.configure( rightFollowConfig,
+                                        ResetMode.kResetSafeParameters, 
+                                        PersistMode.kPersistParameters);
 
         // Reset encoder positions to zero
         leftEncoder.setPosition(0);
