@@ -19,6 +19,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.DriveTrain;
+import frc.robot.subsystems.Feeder;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Vision;
 
@@ -39,9 +40,11 @@ public class RobotContainer {
   private final Vision vision = new Vision();
   private final DriveTrain drivetrain = new DriveTrain(vision);
 
-  // Shooter subsystem (unified — owns shooter wheel, feeder, and intake).
-  // Receives vision and drivetrain for live distance resolution and zone enforcement.
+  // Shooter subsystem (flywheel wheel only — distance resolution and zone enforcement).
+  // Feeder subsystem (intake roller + trigger/hopper — ball path).
+  // Separated so that intake/eject can run concurrently with the shooter wheel spinning.
   private final Shooter shooter = new Shooter(vision, drivetrain);
+  private final Feeder feeder = new Feeder();
 
   // Driver camera (USB webcam) — may be null if no camera is present at startup.
   private final UsbCamera driverCamera;
@@ -100,6 +103,73 @@ public class RobotContainer {
     );
   }
 
+  // ── Compound shooter commands ──────────────────────────────────────────────
+  //
+  // These commands coordinate both the Shooter (flywheel) and Feeder (ball path)
+  // subsystems. They are defined here because both subsystem instances are needed.
+
+  /**
+   * Full shoot sequence: spin up the flywheel, then auto-feed when at speed.
+   * Requires both Shooter and Feeder subsystems.
+   * Uses kCancelIncoming so that accidental LB/LT presses during an active shot
+   * are rejected rather than aborting the sequence. The B-button emergency stop
+   * (stopAllCommand) bypasses this by having no requirements and canceling directly.
+   */
+  private Command shootCommand() {
+    return Commands.run(() -> {
+      if (!shooter.canSpinShooter()) {
+        shooter.stopShooter();
+        feeder.stopAll();
+        return;
+      }
+      shooter.resolveDistanceAndSpin();
+      if (shooter.canShoot(feeder.hasBall())) {
+        feeder.startFeed();
+      }
+    }, shooter, feeder)
+    .withInterruptBehavior(Command.InterruptionBehavior.kCancelIncoming)
+    .finallyDo(interrupted -> {
+      shooter.stopShooter();
+      feeder.stopAll();
+    });
+  }
+
+  /**
+   * Feed only — runs the feeder in feed direction when the shooter is at target speed
+   * AND the robot is in the offensive zone. Requires only Feeder, so it runs
+   * concurrently with spinUpCommand (Y button).
+   * Intended workflow: press Y to pre-spin, then hold RT to feed when ready.
+   */
+  private Command feedCommand() {
+    return Commands.run(() -> {
+      if (shooter.canSpinShooter() && shooter.canShoot(feeder.hasBall())) {
+        feeder.startFeed();
+      } else {
+        feeder.stopAll();
+      }
+    }, feeder)
+    .finallyDo(interrupted -> feeder.stopAll());
+  }
+
+  /**
+   * Emergency stop — immediately halts shooter wheel and feeder motors.
+   * Has NO subsystem requirements so it is always schedulable regardless of what
+   * is running, including commands with kCancelIncoming. It directly cancels any
+   * active commands on both subsystems, then stops the motors immediately.
+   */
+  private Command stopAllCommand() {
+    return Commands.runOnce(() -> {
+      // Force-cancel active commands on both subsystems (works even with kCancelIncoming).
+      Command sc = shooter.getCurrentCommand();
+      if (sc != null) sc.cancel();
+      Command fc = feeder.getCurrentCommand();
+      if (fc != null) fc.cancel();
+      // Stop motors directly (immediate effect, does not wait for scheduler).
+      shooter.stopShooter();
+      feeder.stopAll();
+    });
+  }
+
   /**
    * Configure button-to-command bindings.
    *
@@ -108,20 +178,28 @@ public class RobotContainer {
    *   Start = toggle Field-Oriented / Robot-Relative orientation
    *
    * Operator (port 1) — intake and shooting:
-   *   Y        = toggle shooter spin-up to distance-resolved RPM (zone-locked outside offensive zone)
-   *   X        = shoot: spin up + auto-feed when at speed (hold; zone-locked)
-   *   RB       = feed if shooter is at speed (hold)
-   *   B        = stop all – immediately stops shooter and feeder
+   *   Y        = toggle shooter spin-up to distance-resolved RPM / coast stop
+   *   X        = full auto-shoot: spin up + auto-feed when at speed (hold; zone-locked)
+   *   RT       = feed while held (only runs when at speed AND in offensive zone)
+   *   B        = stop all – immediately stops shooter and feeder (always works)
    *   A        = clear distance preset (return to automatic distance resolution)
-   *   LB       = toggle intake (draw ball in; dashboard indicator)
-   *   LT       = toggle eject (reverse feeder to expel ball)
+   *   LT       = toggle intake (draw ball into hopper; runs concurrently with Y spin-up)
+   *   LB       = toggle eject (reverse feeder to expel ball; runs concurrently with Y spin-up)
    *   POV Up   = stage distance preset 15.0 ft (no spin-up)
    *   POV Down = stage distance preset 10.0 ft
    *   POV Left = stage distance preset  7.5 ft
    *   POV Right= stage distance preset 12.5 ft
    *
-   * Zone enforcement: shooter spin-up is blocked outside the offensive zone in
-   * teleop/auto. Test mode bypasses the zone lock for bench and pit testing.
+   * Concurrent operation:
+   *   Y (spinUpCommand, requires Shooter) and LT/LB/RT (require only Feeder) do NOT
+   *   conflict — they run on different subsystems simultaneously.
+   *
+   * No interference with drivetrain:
+   *   Shooter requires the Shooter subsystem, Feeder requires the Feeder subsystem,
+   *   and DriveTrain requires its own subsystem. They are fully independent.
+   *
+   * Zone enforcement: shooter spin-up and feed are blocked outside the offensive zone
+   * in teleop/auto. Test mode bypasses the zone lock for bench and pit testing.
    */
   private void configureBindings() {
     // ── Driver ────────────────────────────────────────────────────────────────
@@ -134,30 +212,36 @@ public class RobotContainer {
 
     // ── Operator ──────────────────────────────────────────────────────────────
 
-    // Y: toggle shooter spin-up to distance-resolved RPM — no feeding, just spin.
-    // First press starts spinning; second press stops. Zone-locked outside offensive zone.
+    // Y: toggle shooter spin-up to distance-resolved RPM — first press spins up,
+    // second press coasts to a stop. Requires only Shooter subsystem.
     m_operatorController.y().toggleOnTrue(shooter.spinUpCommand());
 
-    // X: full shoot sequence — spin up then auto-feed when at speed. Hold to shoot.
-    m_operatorController.x().whileTrue(shooter.shootCommand());
+    // X: full auto-shoot — spin up then auto-feed when at speed and in zone. Hold to shoot.
+    // Requires both Shooter and Feeder; kCancelIncoming guards against accidental
+    // LT/LB presses aborting the sequence. B-button stop still works (no requirements).
+    m_operatorController.x().whileTrue(shootCommand());
 
-    // RB: feed only if shooter is already at target speed (hold).
-    m_operatorController.rightBumper().whileTrue(shooter.feedCommand());
+    // RT: manual feed — hold to run feeder into shooter.
+    // Only activates when shooter is at target speed AND robot is in offensive zone.
+    // Requires only Feeder, so it runs concurrently with Y spin-up.
+    m_operatorController.rightTrigger().whileTrue(feedCommand());
 
     // B: emergency stop – cancels all shooter/feeder activity immediately.
-    m_operatorController.b().onTrue(shooter.stopAllCommand());
+    // No subsystem requirements — always schedulable, even mid-shoot.
+    m_operatorController.b().onTrue(stopAllCommand());
 
     // A: clear staged distance preset, returning to automatic distance resolution.
     m_operatorController.a().onTrue(
         Commands.runOnce(shooter::clearDistancePreset)
     );
 
-    // LB: toggle intake – first press draws ball in, second press stops.
-    // "Intake Active" boolean on dashboard shows current state.
-    m_operatorController.leftBumper().toggleOnTrue(shooter.intakeCommand());
+    // LT: toggle intake — first press draws ball into hopper, second press stops.
+    // Requires only Feeder — runs concurrently with Y spin-up.
+    m_operatorController.leftTrigger().toggleOnTrue(feeder.intakeCommand());
 
-    // LT: toggle eject — first press reverses feeder to expel ball, second press stops.
-    m_operatorController.leftTrigger().toggleOnTrue(shooter.ejectCommand());
+    // LB: toggle eject — first press reverses feeder to expel ball, second press stops.
+    // Requires only Feeder — runs concurrently with Y spin-up.
+    m_operatorController.leftBumper().toggleOnTrue(feeder.ejectCommand());
 
     // POV: stage a distance preset without spinning the motor.
     // Acts as priority-3 fallback when vision and odometry are unavailable.
