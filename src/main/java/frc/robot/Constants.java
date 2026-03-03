@@ -96,7 +96,7 @@ public final class Constants {
 
         // Shooter PID / feedforward — Phoenix 6 on-controller slot 0
         public static final double TARGET_RPM_10_FEET = 2950.0;
-        public static final double SHOOTER_KP = 0.0;       // proportional (starting value)
+        public static final double SHOOTER_KP = 1.0;       // proportional (starting value)
         public static final double SHOOTER_KI = 0.0;       // integral
         public static final double SHOOTER_KD = 0.0;       // derivative
         public static final double SHOOTER_KV = 0.12;      // feedforward (tune first)

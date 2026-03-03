@@ -134,7 +134,7 @@ public class DriveTrain extends SubsystemBase {
         // Right lead — inverted so positive output = forward on both sides.
         // Encoder conversion factors are set on the primary (built-in hall) encoder so that
         // getPosition() returns meters and getVelocity() returns m/s directly.
-        SparkMaxConfig rightLeadConfig = new SparkMaxConfig();
+        SparkMaxConfig rightLeadConfig = new  SparkMaxConfig();
         rightLeadConfig.inverted(true);
         rightLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
         rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
