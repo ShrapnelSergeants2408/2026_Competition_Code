@@ -235,10 +235,12 @@ public class RobotContainer {
         Commands.runOnce(shooter::clearDistancePreset)
     );
 
+    //inhale
     // LB: toggle intake — clockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.
     m_operatorController.leftBumper().toggleOnTrue(feeder.intakeCommand());
 
+    //exhale
     // RB: toggle removal — counterclockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.
     m_operatorController.rightBumper().toggleOnTrue(feeder.ejectCommand());
