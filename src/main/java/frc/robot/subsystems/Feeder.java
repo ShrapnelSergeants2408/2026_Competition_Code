@@ -174,8 +174,8 @@ public class Feeder extends SubsystemBase {
         return Commands.startEnd(
             () -> {
                 currentState = FeederState.INTAKE;
-                intakeMotor.set(1.0);   // 100% clockwise
-                triggerMotor.set(1.0);  // 100% clockwise
+                intakeMotor.set(INTAKE_SPEED);          // 100% clockwise
+                triggerMotor.set(TRIGGER_INTAKE_SPEED); // 100% clockwise
             },
             () -> stopAll(),
             this
@@ -190,8 +190,8 @@ public class Feeder extends SubsystemBase {
         return Commands.startEnd(
             () -> {
                 currentState = FeederState.EJECT;
-                intakeMotor.set(-1.0);   // 100% counterclockwise
-                triggerMotor.set(-1.0);  // 100% counterclockwise
+                intakeMotor.set(INTAKE_EJECT_SPEED);   // 100% counterclockwise
+                triggerMotor.set(TRIGGER_EJECT_SPEED); // 100% counterclockwise
             },
             () -> stopAll(),
             this

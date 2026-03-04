@@ -72,8 +72,8 @@ public final class Constants {
 
         // Intake roller (CAN 31) speeds — this motor runs CCW only
         // Positive duty cycle = CCW (into robot) when INTAKE_MOTOR_INVERTED is set correctly
-        public static final double INTAKE_SPEED       = 0.5;  // CCW — pulls ball from ground into robot; also assists feeding into shooter
-        public static final double INTAKE_EJECT_SPEED = -0.5; // CW  — reverses to push ball back out through intake opening
+        public static final double INTAKE_SPEED       =  1.0; // 100% clockwise — pulls ball from ground into robot
+        public static final double INTAKE_EJECT_SPEED = -1.0; // 100% counterclockwise — reverses to push ball back out
 
         //Account for shooter gearin
         public static final double SHOOTER_MOTOR_GEAR = 30.0; //30T pulley
@@ -82,8 +82,8 @@ public final class Constants {
         // Trigger/hopper motor (CAN 32) speeds — bidirectional
         // Positive duty cycle = CW (into shooter) when TRIGGER_MOTOR_INVERTED is set correctly
         public static final double TRIGGER_FEED_SPEED   =  0.6;  // CW  — pushes ball from hopper into shooter
-        public static final double TRIGGER_INTAKE_SPEED = -0.5;  // CCW — pulls ball from intake roller into hopper
-        public static final double TRIGGER_EJECT_SPEED  = -0.5;  // CCW — moves ball from hopper back toward intake path
+        public static final double TRIGGER_INTAKE_SPEED =  1.0;  // 100% clockwise — both motors same direction during intake
+        public static final double TRIGGER_EJECT_SPEED  = -1.0;  // 100% counterclockwise — both motors same direction during removal
         public static final double JAM_REVERSE_SPEED    = -0.5;  // CCW — trigger jam-clear reverse
 
         public static final double NOMINAL_VOLTAGE = 12;
