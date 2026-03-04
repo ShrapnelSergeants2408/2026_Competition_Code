@@ -95,12 +95,14 @@ public class Shooter extends SubsystemBase {
     /** Send a velocity target (RPM) to the TalonFX via Phoenix 6 velocity PID. */
     public void setTargetRPM(double rpm) {
         targetRPM = rpm;
-        shooterMotor.setControl(velocityRequest.withVelocity(rpm * SHOOTER_GEAR_RATIO / 60.0));
+        //shooterMotor.setControl(velocityRequest.withVelocity(rpm * SHOOTER_GEAR_RATIO / 60.0));
+                shooterMotor.setControl(velocityRequest.withVelocity(rpm / 60.0));
+
     }
 
     /** Coast the shooter wheel to a stop. */
     public void stopShooter() {
-        shooterMotor.setControl(neutralRequest);
+        shooterMotor.setControl(neutralRequeSst);
     }
 
     /** Read actual shooter velocity from the TalonFX encoder in RPM. */
