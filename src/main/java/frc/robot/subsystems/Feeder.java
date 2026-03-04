@@ -174,8 +174,8 @@ public class Feeder extends SubsystemBase {
         return Commands.startEnd(
             () -> {
                 currentState = FeederState.INTAKE;
-                intakeMotor.set(INTAKE_SPEED);
-                triggerMotor.set(TRIGGER_INTAKE_SPEED);
+                intakeMotor.set(INTAKE_SPEED);          // 100% clockwise
+                triggerMotor.set(TRIGGER_INTAKE_SPEED); // 100% clockwise
             },
             () -> stopAll(),
             this
@@ -183,15 +183,15 @@ public class Feeder extends SubsystemBase {
     }
 
     /**
-     * Eject — reverse feeder to expel ball. Toggle with toggleOnTrue().
+     * Removal — reverse both motors to expel ball. Toggle with toggleOnTrue().
      * Requires only Feeder, so it runs concurrently with the shooter wheel spinning.
      */
     public Command ejectCommand() {
         return Commands.startEnd(
             () -> {
                 currentState = FeederState.EJECT;
-                intakeMotor.set(INTAKE_EJECT_SPEED);
-                triggerMotor.set(TRIGGER_EJECT_SPEED);
+                intakeMotor.set(INTAKE_EJECT_SPEED);   // 100% counterclockwise
+                triggerMotor.set(TRIGGER_EJECT_SPEED); // 100% counterclockwise
             },
             () -> stopAll(),
             this
@@ -202,8 +202,9 @@ public class Feeder extends SubsystemBase {
 
     @Override
     public void periodic() {
-        updateJamDetection();
-        updateJamClear();
+        // Jam clear temporarily disabled
+        // updateJamDetection();
+        // updateJamClear();
         if (++telemetryLoopCounter >= SHOOTER_TELEMETRY_PERIOD_LOOPS) {
             telemetryLoopCounter = 0;
             logTelemetry();
