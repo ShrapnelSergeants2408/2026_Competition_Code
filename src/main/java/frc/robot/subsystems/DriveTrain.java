@@ -140,10 +140,11 @@ public class DriveTrain extends SubsystemBase {
             rightLeadConfig.inverted(true);
             rightLeadConfig.idleMode(IdleMode.kCoast);
             rightLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
+            rightLeadConfig.voltageCompensation(NOMINAL_VOLTAGE);
             rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
             rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
             rightMotorLead.configure(   rightLeadConfig,
-                                        ResetMode.kResetSafeParameters, 
+                                        ResetMode.kResetSafeParameters,
                                         PersistMode.kPersistParameters);
 
         // Left lead
@@ -151,24 +152,43 @@ public class DriveTrain extends SubsystemBase {
             leftLeadConfig.inverted(false);
             leftLeadConfig.idleMode(IdleMode.kCoast);
             leftLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
+            leftLeadConfig.voltageCompensation(NOMINAL_VOLTAGE);
             leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
             leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
             leftMotorLead.configure(leftLeadConfig,
                 ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-        // Follow motors mirror their respective leads
+        // Follow motors mirror their respective leads.
+        // .follow() only sets which motor to mirror — each follower enforces its own
+        // current limit, idle mode, and voltage compensation independently.
+        // Status frame periods are slowed significantly since no data is ever read
+        // from followers, reducing unnecessary CAN bus traffic.
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
             leftFollowConfig.follow(leftMotorLead);
-            //leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
+            leftFollowConfig.idleMode(IdleMode.kCoast);
+            leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
+            leftFollowConfig.voltageCompensation(NOMINAL_VOLTAGE);
+            leftFollowConfig.signals
+                .appliedOutputPeriodMs(500)
+                .primaryEncoderPositionPeriodMs(500)
+                .primaryEncoderVelocityPeriodMs(500)
+                .outputCurrentPeriodMs(500);
             leftMotorFollow.configure(  leftFollowConfig,
-                                        ResetMode.kResetSafeParameters,     
+                                        ResetMode.kResetSafeParameters,
                                         PersistMode.kPersistParameters);
 
         SparkMaxConfig rightFollowConfig = new SparkMaxConfig();
             rightFollowConfig.follow(rightMotorLead);
-            //rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
+            rightFollowConfig.idleMode(IdleMode.kCoast);
+            rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
+            rightFollowConfig.voltageCompensation(NOMINAL_VOLTAGE);
+            rightFollowConfig.signals
+                .appliedOutputPeriodMs(500)
+                .primaryEncoderPositionPeriodMs(500)
+                .primaryEncoderVelocityPeriodMs(500)
+                .outputCurrentPeriodMs(500);
             rightMotorFollow.configure( rightFollowConfig,
-                                        ResetMode.kResetSafeParameters, 
+                                        ResetMode.kResetSafeParameters,
                                         PersistMode.kPersistParameters);
 
         // Reset encoder positions to zero

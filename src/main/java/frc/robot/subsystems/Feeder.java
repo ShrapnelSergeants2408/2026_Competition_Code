@@ -53,6 +53,7 @@ public class Feeder extends SubsystemBase {
             .idleMode(IdleMode.kBrake)
             .smartCurrentLimit(INTAKE_MOTOR_CURRENT_LIMIT)
             .inverted(INTAKE_MOTOR_INVERTED)
+            .voltageCompensation(NOMINAL_VOLTAGE)
             .openLoopRampRate(0.0);
         intakeMotor.configure(intakeConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
@@ -64,6 +65,7 @@ public class Feeder extends SubsystemBase {
             .idleMode(IdleMode.kBrake)
             .smartCurrentLimit(TRIGGER_MOTOR_CURRENT_LIMIT)
             .inverted(TRIGGER_MOTOR_INVERTED)
+            .voltageCompensation(NOMINAL_VOLTAGE)
             .openLoopRampRate(0.0);
         triggerMotor.configure(triggerConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
