@@ -183,12 +183,12 @@ public class RobotContainer {
    *   RT       = feed while held (only runs when at speed AND in offensive zone)
    *   B        = stop all – immediately stops shooter and feeder (always works)
    *   A        = clear distance preset (return to automatic distance resolution)
-   *   LT       = toggle intake (draw ball into hopper; runs concurrently with Y spin-up)
-   *   LB       = toggle eject (reverse feeder to expel ball; runs concurrently with Y spin-up)
-   *   POV Up   = stage distance preset 15.0 ft (no spin-up)
-   *   POV Down = stage distance preset 10.0 ft
-   *   POV Left = stage distance preset  7.5 ft
-   *   POV Right= stage distance preset 12.5 ft
+   *   LB       = toggle intake (clockwise — both intake & trigger at 100%)
+   *   RB       = toggle removal (counterclockwise — both intake & trigger at 100%)
+   *   POV 0°   = stage distance preset  7.5 ft (test mode only)
+   *   POV 90°  = stage distance preset 10.0 ft (test mode only)
+   *   POV 180° = stage distance preset 12.5 ft (test mode only)
+   *   POV 270° = stage distance preset 15.0 ft (test mode only)
    *
    * Concurrent operation:
    *   Y (spinUpCommand, requires Shooter) and LT/LB/RT (require only Feeder) do NOT
@@ -235,27 +235,27 @@ public class RobotContainer {
         Commands.runOnce(shooter::clearDistancePreset)
     );
 
-    // LT: toggle intake — first press draws ball into hopper, second press stops.
+    // LB: toggle intake — clockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.
-    m_operatorController.leftTrigger().toggleOnTrue(feeder.intakeCommand());
+    m_operatorController.leftBumper().toggleOnTrue(feeder.intakeCommand());
 
-    // LB: toggle eject — first press reverses feeder to expel ball, second press stops.
+    // RB: toggle removal — counterclockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.
-    m_operatorController.leftBumper().toggleOnTrue(feeder.ejectCommand());
+    m_operatorController.rightBumper().toggleOnTrue(feeder.ejectCommand());
 
-    // POV: stage a distance preset without spinning the motor.
-    // Acts as priority-3 fallback when vision and odometry are unavailable.
+    // POV: stage a distance preset (test mode only).
+    // 0°=7.5ft, 90°=10ft, 180°=12.5ft, 270°=15ft
     m_operatorController.povUp().onTrue(
-        Commands.runOnce(() -> shooter.setDistancePreset(15.0))
-    );
-    m_operatorController.povDown().onTrue(
-        Commands.runOnce(() -> shooter.setDistancePreset(10.0))
-    );
-    m_operatorController.povLeft().onTrue(
-        Commands.runOnce(() -> shooter.setDistancePreset(7.5))
+        Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(7.5); })
     );
     m_operatorController.povRight().onTrue(
-        Commands.runOnce(() -> shooter.setDistancePreset(12.5))
+        Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(10.0); })
+    );
+    m_operatorController.povDown().onTrue(
+        Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(12.5); })
+    );
+    m_operatorController.povLeft().onTrue(
+        Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(15.0); })
     );
   }
 
