@@ -84,7 +84,7 @@ public class Feeder extends SubsystemBase {
         if (currentState == FeederState.JAM_CLEAR) return;
         currentState = FeederState.FEED;
         intakeMotor.set(INTAKE_SPEED);
-        triggerMotor.set(TRIGGER_FEED_SPEED);
+        triggerMotor.set(-TRIGGER_FEED_SPEED);
     }
 
     /** Stop both motors and return to idle. Always stops even during JAM_CLEAR. */
