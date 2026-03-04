@@ -102,7 +102,7 @@ public class Shooter extends SubsystemBase {
 
     /** Coast the shooter wheel to a stop. */
     public void stopShooter() {
-        shooterMotor.setControl(neutralRequeSst);
+        shooterMotor.setControl(neutralRequest);
     }
 
     /** Read actual shooter velocity from the TalonFX encoder in RPM. */
