@@ -82,9 +82,9 @@ public final class Constants {
         public static final double SHOOTER_GEAR_RATIO = SHOOTER_SHAFT_GEAR / SHOOTER_MOTOR_GEAR;
         // Trigger/hopper motor (CAN 32) speeds — bidirectional
         // Positive duty cycle = CW (into shooter) when TRIGGER_MOTOR_INVERTED is set correctly
-        public static final double TRIGGER_FEED_SPEED   =  0.6;  // CW  — pushes ball from hopper into shooter
+        public static final double TRIGGER_FEED_SPEED   =  -1.0;//0.6;  // CW  — pushes ball from hopper into shooter
         public static final double TRIGGER_INTAKE_SPEED =  1.0;  // 100% clockwise — both motors same direction during intake
-        public static final double TRIGGER_EJECT_SPEED  = -1.0;  // 100% counterclockwise — both motors same direction during removal
+        public static final double TRIGGER_EJECT_SPEED  = 1.00;//-1.0;  // 100% counterclockwise — both motors same direction during removal
         public static final double JAM_REVERSE_SPEED    = -0.5;  // CCW — trigger jam-clear reverse
 
         public static final double NOMINAL_VOLTAGE = 12;
@@ -100,7 +100,7 @@ public final class Constants {
         public static final double JAM_REVERSE_TIME_SEC = 0.25;          // duration of jam-clear reverse
 
         // Shooter PID / feedforward — Phoenix 6 on-controller slot 0
-        public static final double TARGET_RPM_10_FEET = 2950.0;
+        public static final double TARGET_RPM_10_FEET = 6000.0;//2950.0;
         public static final double SHOOTER_KP = 1.0;       // proportional (starting value)
         public static final double SHOOTER_KI = 0.0;       // integral
         public static final double SHOOTER_KD = 0.0;       // derivative
