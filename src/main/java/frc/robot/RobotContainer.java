@@ -103,37 +103,6 @@ public class RobotContainer {
     );
   }
 
-  // ── Compound shooter commands ──────────────────────────────────────────────
-  //
-  // These commands coordinate both the Shooter (flywheel) and Feeder (ball path)
-  // subsystems. They are defined here because both subsystem instances are needed.
-
-  /**
-   * Full shoot sequence: spin up the flywheel, then auto-feed when at speed.
-   * Requires both Shooter and Feeder subsystems.
-   * Uses kCancelIncoming so that accidental LB/LT presses during an active shot
-   * are rejected rather than aborting the sequence. The B-button emergency stop
-   * (stopAllCommand) bypasses this by having no requirements and canceling directly.
-   */
-  private Command shootCommand() {
-    return Commands.run(() -> {
-      if (!shooter.canSpinShooter()) {
-        shooter.stopShooter();
-        feeder.stopAll();
-        return;
-      }
-      shooter.resolveDistanceAndSpin();
-      if (shooter.canShoot(feeder.hasBall())) {
-        feeder.startFeed();
-      }
-    }, shooter, feeder)
-    .withInterruptBehavior(Command.InterruptionBehavior.kCancelIncoming)
-    .finallyDo(interrupted -> {
-      shooter.stopShooter();
-      feeder.stopAll();
-    });
-  }
-
   /**
    * Feed only — runs the feeder in feed direction when the shooter is at target speed
    * AND the robot is in the offensive zone. Requires only Feeder, so it runs
@@ -217,11 +186,9 @@ public class RobotContainer {
     // second press coasts to a stop. Requires only Shooter subsystem.
     m_operatorController.y().toggleOnTrue(shooter.spinUpCommand());
 
-    // spit
-    // X: full auto-shoot — spin up then auto-feed when at speed and in zone. Hold to shoot.
-    // Requires both Shooter and Feeder; kCancelIncoming guards against accidental
-    // LT/LB presses aborting the sequence. B-button stop still works (no requirements).
-    m_operatorController.x().whileTrue(shootCommand());
+    // X: run intake + trigger in feed direction while held. Requires only Feeder,
+    // so it runs concurrently with Y (Shooter) and never blocks or is blocked by it.
+    m_operatorController.x().whileTrue(feeder.shootCommand());
 
     // manual spit
     // RT: manual feed — hold to run feeder into shooter.
