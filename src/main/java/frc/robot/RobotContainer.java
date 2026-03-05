@@ -216,11 +216,13 @@ public class RobotContainer {
     // second press coasts to a stop. Requires only Shooter subsystem.
     m_operatorController.y().toggleOnTrue(shooter.spinUpCommand());
 
+    // spit
     // X: full auto-shoot — spin up then auto-feed when at speed and in zone. Hold to shoot.
     // Requires both Shooter and Feeder; kCancelIncoming guards against accidental
     // LT/LB presses aborting the sequence. B-button stop still works (no requirements).
     m_operatorController.x().whileTrue(shootCommand());
 
+    // manual spit
     // RT: manual feed — hold to run feeder into shooter.
     // Only activates when shooter is at target speed AND robot is in offensive zone.
     // Requires only Feeder, so it runs concurrently with Y spin-up.
