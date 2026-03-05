@@ -119,7 +119,8 @@ public class Shooter extends SubsystemBase {
      * Pass feeder.hasBall() as the hasBall argument.
      */
     public boolean canShoot(boolean hasBall) {
-        return isAtTargetSpeed() && (!PHOTO_SENSOR_ENABLED || hasBall);
+        //return isAtTargetSpeed() && (!PHOTO_SENSOR_ENABLED || hasBall);
+        return true;
     }
 
     // ── Distance → RPM table ─────────────────────────────────────────────────
