@@ -100,17 +100,19 @@ public final class Constants {
         public static final double JAM_REVERSE_TIME_SEC = 0.25;          // duration of jam-clear reverse
 
         // Shooter PID / feedforward — Phoenix 6 on-controller slot 0
-        public static final double TARGET_RPM_10_FEET = 6000.0;//2950.0;
+        public static final double TARGET_RPM_10_FEET = 2625.0; // interpolated mechanism RPM at 10 ft
         public static final double SHOOTER_KP = 1.0;       // proportional (starting value)
         public static final double SHOOTER_KI = 0.0;       // integral
         public static final double SHOOTER_KD = 0.0;       // derivative
         public static final double SHOOTER_KV = 0.12;      // feedforward (tune first)
         public static final double RPM_TOLERANCE = 50.0;   // within ±50 RPM is considered ready
 
-        // Distance to RPM mapping (distance in feet -> target RPM)
-        // Adjust RPMs based on shooter testing
-        public static final double[] DISTANCES_FEET = {5, 7.5, 12.5, 15, 17.5, 20};
-        public static final double[] DISTANCE_RPM_MAP = {2500, 2700, 2950, 3100, 3200, 3300};
+        // Distance to mechanism RPM mapping (distance in feet -> mechanism RPM).
+        // Values calculated from projectile physics (65° launch, 18" launcher height,
+        // 60" target wall, 0.486 slip factor calibrated from test data) for 18T/30T gearing.
+        // Update SHOOTER_MOTOR_GEAR/SHOOTER_SHAFT_GEAR when 18T pulley is installed.
+        public static final double[] DISTANCES_FEET    = {5,    7.5,  12.5, 15,   17.5, 20  };
+        public static final double[] DISTANCE_RPM_MAP  = {2100, 2350, 2900, 3150, 3350, 3550};
     }
 
     public static class SensorConstants {

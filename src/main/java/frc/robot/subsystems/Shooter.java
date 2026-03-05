@@ -92,12 +92,10 @@ public class Shooter extends SubsystemBase {
 
     // ── Shooter wheel control ─────────────────────────────────────────────────
 
-    /** Send a velocity target (RPM) to the TalonFX via Phoenix 6 velocity PID. */
+    /** Send a mechanism velocity target (RPM) to the TalonFX via Phoenix 6 velocity PID. */
     public void setTargetRPM(double rpm) {
         targetRPM = rpm;
-        //shooterMotor.setControl(velocityRequest.withVelocity(rpm * SHOOTER_GEAR_RATIO / 60.0));
-                shooterMotor.setControl(velocityRequest.withVelocity(rpm / 60.0));
-
+        shooterMotor.setControl(velocityRequest.withVelocity(rpm / SHOOTER_GEAR_RATIO / 60.0));
     }
 
     /** Coast the shooter wheel to a stop. */
@@ -105,9 +103,9 @@ public class Shooter extends SubsystemBase {
         shooterMotor.setControl(neutralRequest);
     }
 
-    /** Read actual shooter velocity from the TalonFX encoder in RPM. */
+    /** Read actual shooter mechanism velocity in RPM (motor encoder RPM × gear ratio). */
     public double getCurrentRPM() {
-        return shooterMotor.getVelocity().getValueAsDouble() * 60.0;
+        return shooterMotor.getVelocity().getValueAsDouble() * 60.0 * SHOOTER_GEAR_RATIO;
     }
 
     /** True when the shooter is spinning and within RPM_TOLERANCE of the target. */
@@ -256,7 +254,7 @@ public class Shooter extends SubsystemBase {
      */
     public void resolveDistanceAndSpin() {
         resolveShooterDistance();
-        shooterMotor.setControl(velocityRequest.withVelocity(targetRPM / 60.0));
+        shooterMotor.setControl(velocityRequest.withVelocity(targetRPM / SHOOTER_GEAR_RATIO / 60.0));
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
@@ -307,9 +305,9 @@ public class Shooter extends SubsystemBase {
     private void logTelemetry() {
         double currentRPM = getCurrentRPM();
 
-        // ── Shooter wheel (CAN 30) ─────────────────────────────────────────
-        SmartDashboard.putNumber("Shooter/Current RPM",        currentRPM);
-        SmartDashboard.putNumber("Shooter/Target RPM",         targetRPM);
+        // ── Shooter wheel (CAN 30) — all RPM values are mechanism RPM ────────
+        SmartDashboard.putNumber("Shooter/Current RPM (Mech)", currentRPM);
+        SmartDashboard.putNumber("Shooter/Target RPM (Mech)",  targetRPM);
         SmartDashboard.putBoolean("Shooter/RPM At Speed",      isAtTargetSpeed());
         SmartDashboard.putNumber("Shooter/Motor Current (A)",
             shooterMotor.getSupplyCurrent().getValueAsDouble());
