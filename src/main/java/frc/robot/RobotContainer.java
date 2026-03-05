@@ -112,11 +112,11 @@ public class RobotContainer {
   private Command feedCommand() {
     return Commands.run(() -> {
       //if (shooter.canSpinShooter() && shooter.canShoot(feeder.hasBall())) {
-      if (shooter.canSpinShooter()) {
+      //if (shooter.canSpinShooter()) {
         feeder.startFeed();
-      } else {
-        feeder.stopAll();
-      }
+      //} else {
+        //feeder.stopAll();
+      //}
     }, feeder)
     .finallyDo(interrupted -> feeder.stopAll());
   }
