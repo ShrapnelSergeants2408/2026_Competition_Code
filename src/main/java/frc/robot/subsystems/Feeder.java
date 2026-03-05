@@ -202,9 +202,9 @@ public class Feeder extends SubsystemBase {
     }    public Command shootCommand() {
         return Commands.startEnd(
             () -> {
-                currentState = FeederState.EJECT;
-                intakeMotor.set(INTAKE_SPEED);   // 100% counterclockwise
-                triggerMotor.set(TRIGGER_EJECT_SPEED); // 100% counterclockwise
+                currentState = FeederState.FEED;
+                intakeMotor.set(INTAKE_SPEED);        // inhale direction — holds ball in hopper
+                triggerMotor.set(TRIGGER_EJECT_SPEED); // exhale direction — feeds ball to shooter
             },
             () -> stopAll(),
             this

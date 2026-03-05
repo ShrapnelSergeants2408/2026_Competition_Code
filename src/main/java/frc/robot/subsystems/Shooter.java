@@ -190,24 +190,10 @@ public class Shooter extends SubsystemBase {
 
     /**
      * Returns true when the shooter is permitted to spin up.
-     * In test mode this is always true (bench/pit testing from any field position).
-     * Otherwise the robot must be in the offensive zone.
+     * Zone restriction removed — robot may shoot from the neutral zone.
      */
     public boolean canSpinShooter() {
-        if (DriverStation.isTest()) return true;
-        if (vision != null) {
-            var freshMeasurement = vision.getBestVisionMeasurementIfFresh();
-            if (freshMeasurement.isPresent()) {
-                VisionMeasurement measurement = freshMeasurement.get();
-                if (isVisionMeasurementUsable(measurement)) {
-                    return isInOffensiveZone(measurement.estimatedPose());
-                }
-            }
-        }
-        if (drivetrain != null) {
-            return isInOffensiveZone(drivetrain.getPose());
-        }
-        return false;
+        return true;
     }
 
     /**
@@ -218,7 +204,6 @@ public class Shooter extends SubsystemBase {
      *   4. Default 10 ft
      */
     private void resolveShooterDistance() {
-        boolean testMode = DriverStation.isTest();
         Pose2d hubPose = getAllianceHubPose();
         visionDistanceFt = -1.0;
         odometryDistanceFt = -1.0;
@@ -232,12 +217,10 @@ public class Shooter extends SubsystemBase {
                     Pose2d visionPose = measurement.estimatedPose();
                     double meters = visionPose.getTranslation().getDistance(hubPose.getTranslation());
                     visionDistanceFt = meters / 0.3048;
-                    if (testMode || isInOffensiveZone(visionPose)) {
-                        currentTargetDistance = visionDistanceFt;
-                        targetRPM = getRPMFromDistance(visionDistanceFt);
-                        distanceSource = "Vision";
-                        return;
-                    }
+                    currentTargetDistance = visionDistanceFt;
+                    targetRPM = getRPMFromDistance(visionDistanceFt);
+                    distanceSource = "Vision";
+                    return;
                 }
             }
         }
@@ -247,12 +230,10 @@ public class Shooter extends SubsystemBase {
             Pose2d robotPose = drivetrain.getPose();
             double meters = robotPose.getTranslation().getDistance(hubPose.getTranslation());
             odometryDistanceFt = meters / 0.3048;
-            if (testMode || isInOffensiveZone(robotPose)) {
-                currentTargetDistance = odometryDistanceFt;
-                targetRPM = getRPMFromDistance(odometryDistanceFt);
-                distanceSource = "Odometry";
-                return;
-            }
+            currentTargetDistance = odometryDistanceFt;
+            targetRPM = getRPMFromDistance(odometryDistanceFt);
+            distanceSource = "Odometry";
+            return;
         }
 
         // ── Priority 3: POV preset ──────────────────────────────────────────
@@ -341,6 +322,6 @@ public class Shooter extends SubsystemBase {
         SmartDashboard.putString("Shooter/Distance Source",          distanceSource);
 
         // ── Zone status ────────────────────────────────────────────────────
-        SmartDashboard.putBoolean("Shooter/In Offensive Zone", canSpinShooter());
+        SmartDashboard.putBoolean("Shooter/Shooter Enabled", canSpinShooter());
     }
 }
