@@ -142,7 +142,8 @@ public class RobotContainer {
    */
   private Command feedCommand() {
     return Commands.run(() -> {
-      if (shooter.canSpinShooter() && shooter.canShoot(feeder.hasBall())) {
+      //if (shooter.canSpinShooter() && shooter.canShoot(feeder.hasBall())) {
+      if (shooter.canSpinShooter()) {
         feeder.startFeed();
       } else {
         feeder.stopAll();
@@ -233,10 +234,13 @@ public class RobotContainer {
     m_operatorController.b().onTrue(stopAllCommand());
 
     // A: clear staged distance preset, returning to automatic distance resolution.
+    /* 
     m_operatorController.a().onTrue(
         Commands.runOnce(shooter::clearDistancePreset)
     );
+    */
 
+    m_operatorController.a().toggleOnTrue(feeder.shootCommand());
     //inhale
     // LB: toggle intake — clockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.

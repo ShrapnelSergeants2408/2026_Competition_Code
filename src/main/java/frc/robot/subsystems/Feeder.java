@@ -81,7 +81,7 @@ public class Feeder extends SubsystemBase {
      * No-op during JAM_CLEAR to avoid overriding the jam reversal.
      */
     public void startFeed() {
-        if (currentState == FeederState.JAM_CLEAR) return;
+        //if (currentState == FeederState.JAM_CLEAR) return;
         currentState = FeederState.FEED;
         intakeMotor.set(INTAKE_SPEED);
         triggerMotor.set(TRIGGER_FEED_SPEED); //previously had -
@@ -193,6 +193,17 @@ public class Feeder extends SubsystemBase {
             () -> {
                 currentState = FeederState.EJECT;
                 intakeMotor.set(INTAKE_EJECT_SPEED);   // 100% counterclockwise
+                triggerMotor.set(TRIGGER_EJECT_SPEED); // 100% counterclockwise
+            },
+            () -> stopAll(),
+            this
+        );
+
+    }    public Command shootCommand() {
+        return Commands.startEnd(
+            () -> {
+                currentState = FeederState.EJECT;
+                intakeMotor.set(INTAKE_SPEED);   // 100% counterclockwise
                 triggerMotor.set(TRIGGER_EJECT_SPEED); // 100% counterclockwise
             },
             () -> stopAll(),
