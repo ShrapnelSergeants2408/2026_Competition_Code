@@ -84,7 +84,7 @@ public final class Constants {
         // Positive duty cycle = CW (into shooter) when TRIGGER_MOTOR_INVERTED is set correctly
         public static final double TRIGGER_FEED_SPEED   = -1.0;  // shooting: trigger runs opposite intake (exhale)
         public static final double TRIGGER_INTAKE_SPEED =  1.0;  // 100% clockwise — both motors same direction during intake
-        public static final double TRIGGER_EJECT_SPEED  = -1.0;  // 100% counterclockwise — both motors same direction during removal
+        public static final double TRIGGER_EJECT_SPEED  = -1.0;  // same direction as intake during exhale — both motors reverse together
         public static final double JAM_REVERSE_SPEED    = -0.5;  // CCW — trigger jam-clear reverse
 
         public static final double NOMINAL_VOLTAGE = 12;

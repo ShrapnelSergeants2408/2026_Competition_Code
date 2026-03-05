@@ -171,17 +171,15 @@ public class Feeder extends SubsystemBase {
     /**
      * Intake — draw ball in from ground. Toggle with toggleOnTrue().
      * Requires only Feeder, so it runs concurrently with the shooter wheel spinning.
+     * Uses run() so motors are re-commanded every 20 ms, preventing stalls from
+     * a single missed or current-limited startup command.
      */
     public Command intakeCommand() {
-        return Commands.startEnd(
-            () -> {
-                currentState = FeederState.INTAKE;
-                intakeMotor.set(INTAKE_SPEED);          // 100% clockwise
-                triggerMotor.set(TRIGGER_INTAKE_SPEED); // 100% clockwise
-            },
-            () -> stopAll(),
-            this
-        );
+        return Commands.run(() -> {
+            currentState = FeederState.INTAKE;
+            intakeMotor.set(INTAKE_SPEED);
+            triggerMotor.set(TRIGGER_INTAKE_SPEED);
+        }, this).finallyDo(() -> stopAll());
     }
 
     /**
@@ -189,26 +187,23 @@ public class Feeder extends SubsystemBase {
      * Requires only Feeder, so it runs concurrently with the shooter wheel spinning.
      */
     public Command ejectCommand() {
-        return Commands.startEnd(
-            () -> {
-                currentState = FeederState.EJECT;
-                intakeMotor.set(INTAKE_EJECT_SPEED);   // 100% counterclockwise
-                triggerMotor.set(TRIGGER_EJECT_SPEED); // 100% counterclockwise
-            },
-            () -> stopAll(),
-            this
-        );
+        return Commands.run(() -> {
+            currentState = FeederState.EJECT;
+            intakeMotor.set(INTAKE_EJECT_SPEED);
+            triggerMotor.set(TRIGGER_EJECT_SPEED);
+        }, this).finallyDo(() -> stopAll());
+    }
 
-    }    public Command shootCommand() {
-        return Commands.startEnd(
-            () -> {
-                currentState = FeederState.FEED;
-                intakeMotor.set(INTAKE_SPEED);        // inhale direction — holds ball in hopper
-                triggerMotor.set(TRIGGER_EJECT_SPEED); // exhale direction — feeds ball to shooter
-            },
-            () -> stopAll(),
-            this
-        );
+    /**
+     * Feed ball to shooter — intake holds ball while trigger drives toward shooter wheel.
+     * Used by X (whileTrue) and A (toggleOnTrue).
+     */
+    public Command shootCommand() {
+        return Commands.run(() -> {
+            currentState = FeederState.FEED;
+            intakeMotor.set(INTAKE_SPEED);
+            triggerMotor.set(TRIGGER_FEED_SPEED);
+        }, this).finallyDo(() -> stopAll());
     }
 
     // ── Periodic ──────────────────────────────────────────────────────────────
