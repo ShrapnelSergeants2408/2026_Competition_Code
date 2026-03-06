@@ -76,10 +76,10 @@ public final class Constants {
         public static final double INTAKE_SPEED       =  1.0; // 100% clockwise — pulls ball from ground into robot
         public static final double INTAKE_EJECT_SPEED = -1.0; // 100% counterclockwise — reverses to push ball back out
 
-        //Account for shooter gearin
-        public static final double SHOOTER_MOTOR_GEAR = 30.0; //30T pulley
-        public static final double SHOOTER_SHAFT_GEAR = 15.0; //15T pulley -- waiting for 18T pulley
-        public static final double SHOOTER_GEAR_RATIO = SHOOTER_SHAFT_GEAR / SHOOTER_MOTOR_GEAR;
+        // Shooter pulley sizes (belt drive between Kraken and shooter wheel shaft)
+        public static final double SHOOTER_MOTOR_PULLEY_TEETH = 15.0; // 15T pulley on Kraken shaft
+        public static final double SHOOTER_SHAFT_PULLEY_TEETH = 30.0; // 30T pulley on shooter wheel shaft
+        public static final double SHOOTER_GEAR_RATIO = SHOOTER_MOTOR_PULLEY_TEETH / SHOOTER_SHAFT_PULLEY_TEETH;
         // Trigger/hopper motor (CAN 32) speeds — bidirectional
         // Positive duty cycle = CW (into shooter) when TRIGGER_MOTOR_INVERTED is set correctly
         public static final double TRIGGER_FEED_SPEED   = -1.0;  // shooting: trigger runs opposite intake (exhale)
@@ -100,7 +100,7 @@ public final class Constants {
         public static final double JAM_REVERSE_TIME_SEC = 0.25;          // duration of jam-clear reverse
 
         // Shooter PID / feedforward — Phoenix 6 on-controller slot 0
-        public static final double TARGET_RPM_10_FEET = 2625.0; // interpolated mechanism RPM at 10 ft
+        public static final double TARGET_RPM_10_FEET = 3150.0; // interpolated mechanism RPM at 10 ft
         public static final double SHOOTER_KP = 1.0;       // proportional (starting value)
         public static final double SHOOTER_KI = 0.0;       // integral
         public static final double SHOOTER_KD = 0.0;       // derivative
@@ -108,11 +108,11 @@ public final class Constants {
         public static final double RPM_TOLERANCE = 50.0;   // within ±50 RPM is considered ready
 
         // Distance to mechanism RPM mapping (distance in feet -> mechanism RPM).
-        // Values calculated from projectile physics (65° launch, 18" launcher height,
-        // 60" target wall, 0.486 slip factor calibrated from test data) for 18T/30T gearing.
-        // Update SHOOTER_MOTOR_GEAR/SHOOTER_SHAFT_GEAR when 18T pulley is installed.
-        public static final double[] DISTANCES_FEET    = {5,    7.5,  12.5, 15,   17.5, 20  };
-        public static final double[] DISTANCE_RPM_MAP  = {2100, 2350, 2900, 3150, 3350, 3550};
+        // Values calculated from projectile physics (70° launch, 18" launcher height,
+        // 72" target height, 0.556 slip factor, 4" wheel diameter, calibrated from test data).
+        // Update SHOOTER_MOTOR_PULLEY_TEETH/SHOOTER_SHAFT_PULLEY_TEETH when gearing changes.
+        public static final double[] DISTANCES_FEET    = {5,    7.5,  12.5, 15,   17.5, 18.75};
+        public static final double[] DISTANCE_RPM_MAP  = {2500, 2825, 3475, 3750, 4000, 4125};
     }
 
     public static class SensorConstants {
