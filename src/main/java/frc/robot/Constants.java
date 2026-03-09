@@ -77,8 +77,8 @@ public final class Constants {
         public static final double INTAKE_EJECT_SPEED = -1.0; // 100% counterclockwise — reverses to push ball back out
 
         // Shooter pulley sizes (belt drive between Kraken and shooter wheel shaft)
-        public static final double SHOOTER_MOTOR_PULLEY_TEETH = 15.0; // 15T pulley on Kraken shaft
-        public static final double SHOOTER_SHAFT_PULLEY_TEETH = 30.0; // 30T pulley on shooter wheel shaft
+        public static final double SHOOTER_MOTOR_PULLEY_TEETH = 26.0; // 15T pulley on Kraken shaft
+        public static final double SHOOTER_SHAFT_PULLEY_TEETH = 32.0; // 30T pulley on shooter wheel shaft
         public static final double SHOOTER_GEAR_RATIO = SHOOTER_MOTOR_PULLEY_TEETH / SHOOTER_SHAFT_PULLEY_TEETH;
         // Trigger/hopper motor (CAN 32) speeds — bidirectional
         // Positive duty cycle = CW (into shooter) when TRIGGER_MOTOR_INVERTED is set correctly
