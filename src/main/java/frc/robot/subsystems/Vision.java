@@ -14,7 +14,8 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
-import frc.robot.VisionMeasurement;
+import frc.robot.subsystems.vision.VisionMeasurement;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +26,7 @@ import org.photonvision.PhotonPoseEstimator.PoseStrategy;
 import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
-public class VisionSubsystem extends SubsystemBase {
+public class Vision extends SubsystemBase {
     // PhotonVision cameras
     private final PhotonCamera frontCamera;
     private final PhotonCamera rearCamera;
@@ -44,7 +45,7 @@ public class VisionSubsystem extends SubsystemBase {
     private long lastRearUpdateMs = 0;
     private static final long CAMERA_STALE_TIMEOUT_MS = 500;
 
-    public VisionSubsystem() {
+    public Vision() {
 
 
 
@@ -111,7 +112,7 @@ public class VisionSubsystem extends SubsystemBase {
 
     /**
      * Process a single camera's result and create a VisionMeasurement if valid.
-     */
+    */
 
     private Optional<VisionMeasurement> processCameraResult(
         PhotonPoseEstimator poseEstimator,

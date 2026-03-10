@@ -66,7 +66,11 @@ class RaspberryPi {
             );
     }
     List<Integer> getVisibleTags(){
-        return this.camera.getAllUnreadResults().stream().flatMap(r -> r.getTargets().stream().map(t -> t.getFiducialId())).toList();
+        return this.camera.getAllUnreadResults()
+        .stream()
+        .flatMap(r -> r.getTargets()
+        .stream().map(t -> t.getFiducialId())
+        ).toList();
     }
 
     // Optional<VisionMeasurement> getBestVisionMeasurement(){
@@ -80,9 +84,9 @@ class RaspberryPi {
     //     // var pose = pair.b();
  
     // }
-    Optional<VisionMeasurement> processCameraResult(){
+    ArrayList<VisionMeasurement> processCameraResult(){
         
-        var poses = new ArrayList<Double>();
+        var poses = new ArrayList<VisionMeasurement>();
         for (PhotonPipelineResult r : this.camera.getAllUnreadResults()){
             var optResult = newResultPose(r);
             if (!optResult.isPresent()){
@@ -94,11 +98,14 @@ class RaspberryPi {
                     String.format("Vision/%s/CamStatus", this.cameraName),
                     "Result Rejected (out of bounds or too high ambiguity)");
                     continue;
-                }else{
-                    Matrix<N3,N1> stdDevs = result.calculateStandardDeviations();
-                };
+            }else{
+                // var averageTagDistance = result.calculateAverageTagDistance();
+                // Matrix<N3,N1> stdDevs = result.calculateStandardDeviations(averageTagDistance);
+                // int numTags = result.pose.targetsUsed.size();
+                poses.add(result.mkVisionMeasurement());
+            };
         }
-        
+        return poses;        
     }
 
     Optional<ResultPose> newResultPose(PhotonPipelineResult result){
@@ -113,9 +120,15 @@ class RaspberryPi {
             return Optional.of(new ResultPose(result, optPose.get()));
         }
     
+
+
+
+
+    // this bundles various operations that originally 
+    // took pose and result as parameters. 
     private class ResultPose{
-        EstimatedRobotPose pose;
-        PhotonPipelineResult result;
+        final EstimatedRobotPose pose;
+        final PhotonPipelineResult result;
 
         ResultPose(PhotonPipelineResult result, EstimatedRobotPose pose){
             this.result = result;
@@ -138,18 +151,56 @@ class RaspberryPi {
             return true;
         }
 
+        private double calculateAverageTagDistance(){
+            var targets = this.result.getTargets();
+            var pose2d = this.pose.estimatedPose.toPose2d();
+              if (targets.isEmpty()) {
+            return 0.0;
+        }
+
+        double totalDistance = 0.0;
+        int validTagCount = 0;
+
+        for (var target : targets) {
+            var tagPose = field.getTagPose(target.getFiducialId());
+            if (tagPose.isPresent()) {
+                totalDistance += pose2d.getTranslation()
+                    .getDistance(tagPose.get().toPose2d().getTranslation());
+                validTagCount++;
+            }
+        }
+
+        //If no valid tag IDs were in the layout, treat as invalid/very poor measurement 
+        if (validTagCount == 0){
+            return Double.POSITIVE_INFINITY;
+        }
+
+
+        return totalDistance / validTagCount;
+        }
+
         private Matrix<N3,N1> calculateStandardDeviations(
-            double averageDistance
+        double averageTagDistance
         ){
             int numTags = pose.targetsUsed.size();
             if (numTags >= VisionConstants.MIN_TAGS_FOR_MULTI_TAG){
                 return VisionConstants.MULTI_TAG_STDDEVS;
             }
-            if (averageDistance <2.0){
+            if (averageTagDistance <2.0){
                 return VisionConstants.SINGLE_TAG_CLOSE_STDDEVS;
             }else{
                 return VisionConstants.SINGLE_TAG_FAR_STDDEVS;
             }
+        }
+        VisionMeasurement mkVisionMeasurement(){
+            var avgDistance = this.calculateAverageTagDistance();
+            return new VisionMeasurement(
+                this.pose.estimatedPose.toPose2d(),
+                 this.pose.timestampSeconds,
+                 this.calculateStandardDeviations(avgDistance),
+                 this.pose.targetsUsed.size(), // numtags
+                avgDistance
+            );
         }
    }
 }
