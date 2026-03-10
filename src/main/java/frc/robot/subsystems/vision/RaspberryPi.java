@@ -41,6 +41,12 @@ class RaspberryPi {
         this.lastCheck = getNowSeconds();
         this.lastTimestamp = -1.0;
     }
+    VisionMeasurement getBestVisionMeasurement(){
+        var best = null;
+        for (var m:this.processCameraResult()){
+
+        }
+    }
     double getNowSeconds(){
         return (double) System.currentTimeMillis()/1000;
     }
@@ -71,6 +77,9 @@ class RaspberryPi {
         .flatMap(r -> r.getTargets()
         .stream().map(t -> t.getFiducialId())
         ).toList();
+    }
+    public Optional<Double> getDistanceToPose(Pose2d targetPose){
+        return getBestVisionMeasurement().map(m -> m.estimatedPose)
     }
 
     // Optional<VisionMeasurement> getBestVisionMeasurement(){
