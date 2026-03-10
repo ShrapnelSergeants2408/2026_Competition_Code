@@ -207,16 +207,16 @@ public class RobotContainer {
     );
     */
 
-    m_operatorController.a().toggleOnTrue(feeder.shootCommand());
+    m_operatorController.a().whileTrue(feeder.shootCommand());
     //inhale
     // LB: toggle intake — clockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.
-    m_operatorController.leftBumper().toggleOnTrue(feeder.intakeCommand());
+    m_operatorController.leftBumper().whileTrue(feeder.intakeCommand());
 
     //exhale
     // RB: toggle removal — counterclockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.
-    m_operatorController.rightBumper().toggleOnTrue(feeder.ejectCommand());
+    m_operatorController.rightBumper().whileTrue(feeder.ejectCommand());
 
     // POV: stage a distance preset (test mode only).
     // 0°=7.5ft, 90°=10ft, 180°=12.5ft, 270°=15ft
