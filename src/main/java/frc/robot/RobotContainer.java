@@ -188,7 +188,7 @@ public class RobotContainer {
 
     // X: run intake + trigger in feed direction while held. Requires only Feeder,
     // so it runs concurrently with Y (Shooter) and never blocks or is blocked by it.
-    m_operatorController.x().whileTrue(feeder.shootCommand());
+    //m_operatorController.x().whileTrue(feeder.shootCommand());
 
     // manual spit
     // RT: manual feed — hold to run feeder into shooter.
