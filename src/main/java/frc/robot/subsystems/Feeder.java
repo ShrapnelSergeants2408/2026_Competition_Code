@@ -202,7 +202,7 @@ public class Feeder extends SubsystemBase {
         return Commands.run(() -> {
             currentState = FeederState.FEED;
             intakeMotor.set(INTAKE_SPEED);
-            triggerMotor.set(TRIGGER_FEED_SPEED);
+            triggerMotor.set(TRIGGER_EJECT_SPEED);  //was TRIGGER_FEED_SPEED
         }, this);//.finallyDo(() -> stopAll());
     }
 
@@ -222,9 +222,9 @@ public class Feeder extends SubsystemBase {
     private void logTelemetry() {
         SmartDashboard.putBoolean("Feeder/Intake Active",      currentState == FeederState.INTAKE);
         SmartDashboard.putBoolean("Feeder/Eject Active",       currentState == FeederState.EJECT);
-        SmartDashboard.putBoolean("Feeder/Jam Clearing",       currentState == FeederState.JAM_CLEAR);
+        //SmartDashboard.putBoolean("Feeder/Jam Clearing",       currentState == FeederState.JAM_CLEAR);
         SmartDashboard.putString("Feeder/State",               currentState.name());
-        SmartDashboard.putBoolean("Feeder/Ball Detected",      hasBall());
+        //SmartDashboard.putBoolean("Feeder/Ball Detected",      hasBall());
         SmartDashboard.putNumber("Feeder/Intake Current (A)",  intakeMotor.getOutputCurrent());
         SmartDashboard.putNumber("Feeder/Trigger Current (A)", triggerMotor.getOutputCurrent());
     }

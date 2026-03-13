@@ -192,9 +192,10 @@ public class RobotContainer {
 
     // manual spit
     // RT: manual feed — hold to run feeder into shooter.
-    // Only activates when shooter is at target speed AND robot is in offensive zone.
-    // Requires only Feeder, so it runs concurrently with Y spin-up.
-    m_operatorController.rightTrigger().whileTrue(feedCommand());
+    // A: manual feed
+    // RT is analog/A is digital - I'm not sure how .whileTrue interacts with analog triggers, so I'm leaving both in for testing. They run the same command, so no conflicts.
+    m_operatorController.rightTrigger().whileTrue(feeder.shootCommand());
+    m_operatorController.a().whileTrue(feeder.shootCommand());
 
     // B: emergency stop – cancels all shooter/feeder activity immediately.
     // No subsystem requirements — always schedulable, even mid-shoot.
@@ -207,7 +208,10 @@ public class RobotContainer {
     );
     */
 
-    m_operatorController.a().whileTrue(feeder.shootCommand());
+
+    
+    
+    
     //inhale
     // LB: toggle intake — clockwise, both intake & trigger motors at 100%.
     // Requires only Feeder — runs concurrently with Y spin-up.

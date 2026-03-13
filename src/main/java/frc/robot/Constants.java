@@ -91,12 +91,12 @@ public final class Constants {
         public static final int SHOOTER_TELEMETRY_PERIOD_LOOPS = 5;
 
         // Current limits
-        public static final int SHOOTER_CURRENT_LIMIT      = 40; // TalonFX stator limit (amps)
-        public static final int INTAKE_MOTOR_CURRENT_LIMIT = 30; // SparkMAX smart current limit (amps)
-        public static final int TRIGGER_MOTOR_CURRENT_LIMIT= 30; // SparkMAX smart current limit (amps)
+        public static final int SHOOTER_CURRENT_LIMIT      = 60; // TalonFX stator limit (amps)
+        public static final int INTAKE_MOTOR_CURRENT_LIMIT = 50; // SparkMAX smart current limit (amps)
+        public static final int TRIGGER_MOTOR_CURRENT_LIMIT= 50; // SparkMAX smart current limit (amps)
 
         // Jam detection (trigger motor — most likely jam point)
-        public static final double TRIGGER_SPIKE_THRESHOLD_AMPS = 30.0; // current spike triggers jam clear
+        public static final double TRIGGER_SPIKE_THRESHOLD_AMPS = 50.0; // current spike triggers jam clear
         public static final double JAM_REVERSE_TIME_SEC = 0.25;          // duration of jam-clear reverse
 
         // Shooter PID / feedforward — Phoenix 6 on-controller slot 0
@@ -111,8 +111,8 @@ public final class Constants {
         // Values calculated from projectile physics (70° launch, 18" launcher height,
         // 72" target height, 0.556 slip factor, 4" wheel diameter, calibrated from test data).
         // Update SHOOTER_MOTOR_PULLEY_TEETH/SHOOTER_SHAFT_PULLEY_TEETH when gearing changes.
-        public static final double[] DISTANCES_FEET    = {5,    7.5,  12.5, 15,   17.5, 18.75};
-        public static final double[] DISTANCE_RPM_MAP  = {2500, 2825, 3475, 3750, 4000, 4125};
+        public static final double[] DISTANCES_FEET    = {5,    7.5,  10, 12.5, 15,   17.5, 18.75};
+        public static final double[] DISTANCE_RPM_MAP  = {2500, 2825, 3150, 3475, 3750, 4000, 4125};
     }
 
     public static class SensorConstants {
