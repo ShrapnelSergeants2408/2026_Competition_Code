@@ -92,9 +92,9 @@ public class Feeder extends SubsystemBase {
         intakeMotor.set(0.0);
         triggerMotor.set(0.0);
         currentState = FeederState.IDLE;
-        spikeDebounceTimer.stop();
-        spikeDebounceRunning = false;
-        jamReverseTimer.stop();
+        //spikeDebounceTimer.stop();
+        //spikeDebounceRunning = false;
+        //jamReverseTimer.stop();
     }
 
     // ── Sensor ────────────────────────────────────────────────────────────────
