@@ -179,7 +179,8 @@ public class Feeder extends SubsystemBase {
             currentState = FeederState.INTAKE;
             intakeMotor.set(INTAKE_SPEED);
             triggerMotor.set(TRIGGER_INTAKE_SPEED);
-        }, this);//.finallyDo(() -> stopAll());
+        }, this)
+        .finallyDo(() -> stopAll());
     }
 
     /**
@@ -191,7 +192,8 @@ public class Feeder extends SubsystemBase {
             currentState = FeederState.EJECT;
             intakeMotor.set(INTAKE_EJECT_SPEED);
             triggerMotor.set(TRIGGER_EJECT_SPEED);
-        }, this);//.finallyDo(() -> stopAll());
+        }, this)
+        .finallyDo(() -> stopAll());
     }
 
     /**
@@ -203,7 +205,8 @@ public class Feeder extends SubsystemBase {
             currentState = FeederState.FEED;
             intakeMotor.set(INTAKE_SPEED);
             triggerMotor.set(TRIGGER_EJECT_SPEED);  //was TRIGGER_FEED_SPEED
-        }, this);//.finallyDo(() -> stopAll());
+        }, this)
+        .finallyDo(() -> stopAll());
     }
 
     // ── Periodic ──────────────────────────────────────────────────────────────

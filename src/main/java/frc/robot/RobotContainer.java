@@ -195,7 +195,7 @@ public class RobotContainer {
     // A: manual feed
     // RT is analog/A is digital - I'm not sure how .whileTrue interacts with analog triggers, so I'm leaving both in for testing. They run the same command, so no conflicts.
     m_operatorController.rightTrigger().whileTrue(feeder.shootCommand());
-    m_operatorController.a().whileTrue(feeder.shootCommand());
+    //m_operatorController.a().whileTrue(feeder.shootCommand());
 
     // B: emergency stop – cancels all shooter/feeder activity immediately.
     // No subsystem requirements — always schedulable, even mid-shoot.
