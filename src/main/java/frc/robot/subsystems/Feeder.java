@@ -209,6 +209,22 @@ public class Feeder extends SubsystemBase {
         .finallyDo(() -> stopAll());
     }
 
+    public Command manualTriggerOverride() {
+        return Commands.run(() -> {
+            currentState = FeederState.FEED;
+            triggerMotor.set(TRIGGER_EJECT_SPEED);
+        }, this)
+        .finallyDo(() -> stopAll());
+    }
+
+    public Command manualIntakeOverride() {
+        return Commands.run(() -> {
+            
+            intakeMotor.set(INTAKE_SPEED);
+        }, this)
+        .finallyDo(() -> stopAll());
+    }
+
     // ── Periodic ──────────────────────────────────────────────────────────────
 
     @Override
