@@ -1,5 +1,5 @@
 # Troubleshooting Log — 2026 Competition Code
-**Date:** 2026-03-16
+**Date:** 2026-03-16 / 2026-03-17
 **Branch:** hieb-trial
 
 ---
@@ -38,12 +38,29 @@
 - Second trial: all three worked.
 - Third trial: shooter (Y) run → trigger motor failed again.
 
-#### Phase 5 — Deterministic Pattern Identified (Root Cause)
-- Discovered a perfectly repeatable pattern **without pressing B and without running the shooter**:
+#### Phase 5 — Deterministic Pattern Identified
+- Discovered a repeatable pattern **without pressing B and without running the shooter**:
   1. Press inhale → exhale and shoot **work** immediately after.
   2. Press exhale or shoot a second time (without inhale first) → trigger motor **does not run**.
   3. Press inhale again → exhale and shoot **work** again.
-- This deterministic behavior ruled out all electrical/brownout/CAN theories.
+
+#### Phase 6 — Brownout Identified as Root Cause
+- Reducing intake/trigger motors from 100% to 50% stopped brownouts.
+- Switching between inhale and exhale caused **30–40A current spikes** (0A draw during trigger failure = brownout had already occurred).
+- During shooter spin-up, PDH bus voltage **drops to ~9.6V** before recovering.
+- At 9.6V on a 12V system, SparkMAX may reboot → `kHasReset` sticky fault.
+- Physical assist on the trigger motor shaft during failure produced no response → motor was in post-brownout lockout state, not a commutation dead zone.
+
+#### Phase 7 — Ramp Rates Added
+- `openLoopRampRate(0.15)` added to both SparkMAX motors (intake CAN 31 and trigger CAN 32).
+- `VoltageClosedLoopRampPeriod(0.25)` and `SupplyCurrentLimit(40A)` added to TalonFX (shooter CAN 30).
+- Result: brownout symptoms reduced but **CAN 32 continued failing intermittently** even after clearing `kHasReset`.
+
+#### Phase 8 — Firmware Fault Confirmed Hardware Damage
+- Simultaneous **LB + RT press** (inhale + shoot) caused near-instantaneous direction reversal on trigger motor.
+- REV Hardware Client reported **firmware fault + kHasReset** on CAN 32.
+- Firmware fault = internal SparkMAX controller damage from repeated brownout events.
+- **Conclusion: CAN 32 SparkMAX is damaged hardware. Replace the unit.**
 
 ---
 
@@ -56,26 +73,21 @@
 | Missing `finallyDo` on feeder commands | Motors kept running after button release; `finallyDo(() -> stopAll())` reinstated on all three commands |
 | SparkMAX soft/hard limits | Confirmed not set via REV Hardware Client |
 | CAN bus congestion from Phoenix 6 (TalonFX) | Consistent with some symptoms but ruled out by deterministic reproduce without shooter |
-| Brownout / PDH slot proximity | Moving TalonFX to opposite PDH side had no effect; PDH-level cause eliminated |
-| Battery voltage sag | Possible contributing factor for the `kHasReset` fault but not the root cause of direction failure |
+| Brownout / PDH slot proximity | Moving TalonFX to opposite PDH side had no effect on direction-failure pattern |
+| Brushless motor commutation dead zone (brake mode) | Coast mode showed no improvement; physical assist during failure also failed → not rotor position |
+| Battery voltage sag from SparkMAX alone | Pattern was reproducible; sag from TalonFX during spin-up was the main contributor |
 
 ---
 
 ### Root Cause
 
-**Brushless motor commutation dead zone combined with `IdleMode.kBrake` on the trigger motor.**
+**CAN 32 SparkMAX hardware damage from repeated brownout resets.**
 
-The trigger motor (NEO + SparkMAX CAN 32) uses hall effect sensors and trapezoidal commutation (6 sectors per electrical revolution). At certain rotor positions — particularly near commutation sector boundaries — the electromagnetic starting torque in one direction is below the mechanism's static friction threshold.
+The trigger motor SparkMAX (CAN 32) has been browned out multiple times. SparkMAX brownout occurs when VIN drops below ~5.5V for >1ms — this causes the controller to reboot and record a `kHasReset` sticky fault. Multiple brownout resets cause cumulative stress on the controller's internal power management circuitry.
 
-`IdleMode.kBrake` actively shorts the motor phases when output is zero, holding the rotor at a stable magnetic equilibrium. After any negative-direction run (exhale or shoot), the motor **reliably parks at the same equilibrium position** — which happens to be a dead zone for restarting in the negative direction.
+The damaged controller intermittently fails during normal operation (random single-direction failures after the `kHasReset` fault is set) and confirmed failure mode under a firmware fault triggered by simultaneous LB+RT (direction reversal under load).
 
-From this parked position:
-- **Positive direction (inhale):** sufficient torque — motor starts ✓
-- **Negative direction (exhale/shoot):** insufficient torque at this rotor angle — motor does not move ✗
-
-Running inhale first moves the rotor to a different position where negative-direction torque is sufficient, restoring exhale and shoot.
-
-This also explains why the `kHasReset` sticky fault appeared to "fix" the issue when cleared via REV Hardware Client — the tool briefly releases the brake, allowing the rotor to drift off the dead zone position. The shooter's vibration (TalonFX spinning) similarly shook the assembly enough to settle the rotor at the dead zone position before the next feeder command.
+Contributing cause: **excessive current spikes** from zero `openLoopRampRate` on SparkMAX motors and zero `VoltageClosedLoopRampPeriod` on TalonFX, combined with a **30–40A instantaneous draw** on direction changes and **9.6V bus voltage** during shooter spin-up. All of these lowered the margin for CAN 32 to survive without brownout.
 
 ---
 
@@ -87,12 +99,33 @@ This also explains why the `kHasReset` sticky fault appeared to "fix" the issue 
 2. **`Feeder.java`** — Reinstated `finallyDo(() -> stopAll())` on `intakeCommand()`, `ejectCommand()`, and `shootCommand()`.
    Without this, motors kept running at their last set speed after a button was released, causing inconsistent state between commands.
 
-3. **`Feeder.java`** — Changed trigger motor idle mode from `IdleMode.kBrake` to `IdleMode.kCoast`.
-   In coast mode the rotor is not actively held between commands and drifts to different angular positions, preventing the deterministic dead zone parking behavior.
+3. **`Feeder.java`** — Added `openLoopRampRate(0.15)` to both `intakeConfig` and `triggerConfig`.
+   Limits the rate of duty cycle change to reduce 30–40A instantaneous current spikes on direction reversal, reducing PDH bus voltage sag.
+
+4. **`Shooter.java`** — Added `withClosedLoopRamps(new ClosedLoopRampsConfigs().withVoltageClosedLoopRampPeriod(0.25))`.
+   Limits the rate of voltage output change during TalonFX velocity PID to reduce the 9.6V bus voltage sag during shooter spin-up.
+
+5. **`Shooter.java`** — Added `withSupplyCurrentLimit(40)` and `withSupplyCurrentLimitEnable(true)` to `CurrentLimitsConfigs`.
+   Supply current limit restricts battery draw from the TalonFX, reducing worst-case PDH bus voltage sag.
+
+6. **`Feeder.java`** — Added constructor return value checking for both `configure()` calls.
+   `SparkMax.configure()` returns `REVLibError`; previously ignored. Now calls `DriverStation.reportWarning()` on failure so config errors appear in the DS log.
+
+7. **`Shooter.java`** — Added constructor return value checking for `getConfigurator().apply()`.
+   `TalonFX.getConfigurator().apply()` returns `StatusCode`; previously ignored. Now calls `DriverStation.reportWarning()` on failure.
 
 ---
 
-### Remaining Notes
+### Remaining Work
 
-- The `stopAllCommand()` in `RobotContainer` has no subsystem requirements by design (so it can always be scheduled). This means after B is pressed and a `whileTrue`-bound command is externally cancelled, the user must **fully release and re-press** the button to restart — `whileTrue` only reschedules on a false→true rising edge.
-- The `kHasReset` sticky fault on CAN 32 should be monitored. If it continues to appear after the coast mode fix, a genuine brownout (battery voltage under TalonFX load) may still be present and warrants electrical inspection of the trigger motor's power wiring.
+#### Hardware (Required Before Competition)
+- **Replace CAN 32 SparkMAX** — firmware fault confirmed the unit is damaged. A replacement will eliminate the intermittent trigger motor failures.
+- **Verify `TRIGGER_MOTOR_INVERTED`** — this constant has a `TODO: verify on bench; CW must be positive` comment and has never been confirmed correct. Wrong inversion means the motor works against a hard stop in one direction, causing additional current spikes.
+
+#### Software
+- After CAN 32 replacement, **re-run full test sequence**: inhale → Y (shooter) → rapid RT presses → no `kHasReset` should appear.
+- **Investigate roboRIO RAM (3MB free)** — `CameraServer.startAutomaticCapture` at 320×240/30fps is the primary suspect. Camera was not connected during most of this troubleshooting session, so it could not be confirmed as a culprit. Camera was removed from testing by physical disconnection. RAM should be measured with camera connected before competition.
+
+#### Behavior Notes
+- `stopAllCommand()` has no subsystem requirements by design (so it can always be scheduled). After B is pressed and a `whileTrue`-bound command is externally cancelled, the user must **fully release and re-press** the button to restart — `whileTrue` only reschedules on a false→true rising edge.
+- SparkMAX `configure()` with `ResetMode.kResetSafeParameters` and `PersistMode.kPersistParameters` re-applies config on every enable (parameters are persisted to flash). This means a brownout reset will correctly restore the ramp rate and current limit settings when the controller reboots.
