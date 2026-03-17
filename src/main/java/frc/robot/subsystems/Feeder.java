@@ -4,6 +4,7 @@ import static frc.robot.Constants.SensorConstants.*;
 import static frc.robot.Constants.ShooterConstants.*;
 
 import com.revrobotics.PersistMode;
+import com.revrobotics.REVLibError;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
@@ -11,6 +12,7 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -55,8 +57,12 @@ public class Feeder extends SubsystemBase {
             .inverted(INTAKE_MOTOR_INVERTED)
             .voltageCompensation(NOMINAL_VOLTAGE)
             .openLoopRampRate(0.15);
-        intakeMotor.configure(intakeConfig,
+        REVLibError intakeConfigError = intakeMotor.configure(intakeConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        if (intakeConfigError != REVLibError.kOk) {
+            DriverStation.reportWarning(
+                "Intake motor (CAN 31) config failed: " + intakeConfigError, false);
+        }
 
         // SparkMAX trigger/hopper — CAN 32, open-loop, bidirectional
         triggerMotor = new SparkMax(TRIGGER_MOTOR_ID, MotorType.kBrushless);
@@ -67,8 +73,12 @@ public class Feeder extends SubsystemBase {
             .inverted(TRIGGER_MOTOR_INVERTED)
             .voltageCompensation(NOMINAL_VOLTAGE)
             .openLoopRampRate(0.15);
-        triggerMotor.configure(triggerConfig,
+        REVLibError triggerConfigError = triggerMotor.configure(triggerConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        if (triggerConfigError != REVLibError.kOk) {
+            DriverStation.reportWarning(
+                "Trigger motor (CAN 32) config failed: " + triggerConfigError, false);
+        }
 
         // Photo sensor — skip DIO allocation until the sensor is installed
         photoSensor = PHOTO_SENSOR_ENABLED ? new DigitalInput(PHOTO_SENSOR_DIO_PORT) : null;

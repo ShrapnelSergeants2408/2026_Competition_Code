@@ -7,6 +7,7 @@ import static frc.robot.Constants.VisionConstants.*;
 import edu.wpi.first.math.geometry.Pose2d;
 import frc.robot.VisionMeasurement;
 
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
@@ -86,7 +87,11 @@ public class Shooter extends SubsystemBase {
                 .withKI(SHOOTER_KI)
                 .withKD(SHOOTER_KD)
                 .withKV(SHOOTER_KV));
-        shooterMotor.getConfigurator().apply(shooterConfig);
+        StatusCode shooterConfigError = shooterMotor.getConfigurator().apply(shooterConfig);
+        if (!shooterConfigError.isOK()) {
+            DriverStation.reportWarning(
+                "Shooter motor (CAN 30) config failed: " + shooterConfigError, false);
+        }
 
         // Seed SmartDashboard tuning entries with constant defaults
         SmartDashboard.putNumber("Shooter/Tuning/kP", SHOOTER_KP);
