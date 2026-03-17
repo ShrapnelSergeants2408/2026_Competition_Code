@@ -7,6 +7,7 @@ import static frc.robot.Constants.VisionConstants.*;
 import edu.wpi.first.math.geometry.Pose2d;
 import frc.robot.VisionMeasurement;
 
+import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
@@ -75,7 +76,11 @@ public class Shooter extends SubsystemBase {
                     : InvertedValue.CounterClockwise_Positive))
             .withCurrentLimits(new CurrentLimitsConfigs()
                 .withStatorCurrentLimit(SHOOTER_CURRENT_LIMIT)
-                .withStatorCurrentLimitEnable(true))
+                .withStatorCurrentLimitEnable(true)
+                .withSupplyCurrentLimit(40)
+                .withSupplyCurrentLimitEnable(true))
+            .withClosedLoopRamps(new ClosedLoopRampsConfigs()
+                .withVoltageClosedLoopRampPeriod(0.25))
             .withSlot0(new Slot0Configs()
                 .withKP(SHOOTER_KP)
                 .withKI(SHOOTER_KI)

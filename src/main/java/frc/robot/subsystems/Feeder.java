@@ -54,7 +54,7 @@ public class Feeder extends SubsystemBase {
             .smartCurrentLimit(INTAKE_MOTOR_CURRENT_LIMIT)
             .inverted(INTAKE_MOTOR_INVERTED)
             .voltageCompensation(NOMINAL_VOLTAGE)
-            .openLoopRampRate(0.0);
+            .openLoopRampRate(0.15);
         intakeMotor.configure(intakeConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
@@ -66,7 +66,7 @@ public class Feeder extends SubsystemBase {
             .smartCurrentLimit(TRIGGER_MOTOR_CURRENT_LIMIT)
             .inverted(TRIGGER_MOTOR_INVERTED)
             .voltageCompensation(NOMINAL_VOLTAGE)
-            .openLoopRampRate(0.0);
+            .openLoopRampRate(0.15);
         triggerMotor.configure(triggerConfig,
             ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
@@ -92,9 +92,9 @@ public class Feeder extends SubsystemBase {
         intakeMotor.set(0.0);
         triggerMotor.set(0.0);
         currentState = FeederState.IDLE;
-        spikeDebounceTimer.stop();
-        spikeDebounceRunning = false;
-        jamReverseTimer.stop();
+        //spikeDebounceTimer.stop();
+        //spikeDebounceRunning = false;
+        //jamReverseTimer.stop();
     }
 
     // ── Sensor ────────────────────────────────────────────────────────────────
