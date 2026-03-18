@@ -47,16 +47,6 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 
 public class DriveTrain extends SubsystemBase {
 
-    public enum DriveMode {
-        ARCADE,
-        TANK
-    }
-
-    public enum OrientationMode {
-        ROBOT_RELATIVE,
-        FIELD_ORIENTED
-    }
-
     // Hardware
     private final SparkMax leftMotorLead   = new SparkMax(LEFT_LEAD_CAN_ID,   MotorType.kBrushless);
     private final SparkMax rightMotorLead  = new SparkMax(RIGHT_LEAD_CAN_ID,  MotorType.kBrushless);
@@ -96,13 +86,6 @@ public class DriveTrain extends SubsystemBase {
     private double lastDt = PPLTV_DT;
     private double lastMaxVelocity = PPLTV_MAX_VELOCITY;
 
-    // State — defaults to field-oriented tank per driver preference
-    private DriveMode driveMode = DriveMode.TANK;
-    private OrientationMode orientationMode = OrientationMode.FIELD_ORIENTED;
-    // E7: visionEnabled field removed; check is inlined in periodic() to reduce mutable state.
-    // INEFF-05: cached; rebuilt only when driveMode or orientationMode actually changes.
-    private String driveStateString = "Field-Oriented Tank";
-
     // Dependencies
     private final Vision visionSubsystem;
 
@@ -140,7 +123,6 @@ public class DriveTrain extends SubsystemBase {
             rightLeadConfig.inverted(true);
             rightLeadConfig.idleMode(IdleMode.kCoast);
             rightLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
-            rightLeadConfig.voltageCompensation(NOMINAL_VOLTAGE);
             rightLeadConfig.openLoopRampRate(0.25); //0.15
             rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
             rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
@@ -153,7 +135,6 @@ public class DriveTrain extends SubsystemBase {
             leftLeadConfig.inverted(false);
             leftLeadConfig.idleMode(IdleMode.kCoast);
             leftLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
-            leftLeadConfig.voltageCompensation(NOMINAL_VOLTAGE);
             leftLeadConfig.openLoopRampRate(0.25); //0.15
             leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
             leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
@@ -162,14 +143,13 @@ public class DriveTrain extends SubsystemBase {
 
         // Follow motors mirror their respective leads.
         // .follow() only sets which motor to mirror — each follower enforces its own
-        // current limit, idle mode, and voltage compensation independently.
+        // current limit and idle mode independently.
         // Status frame periods are slowed significantly since no data is ever read
         // from followers, reducing unnecessary CAN bus traffic.
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
             leftFollowConfig.follow(leftMotorLead);
             leftFollowConfig.idleMode(IdleMode.kCoast);
             leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
-            leftFollowConfig.voltageCompensation(NOMINAL_VOLTAGE);
             leftFollowConfig.openLoopRampRate(0.25); //0.15
             leftFollowConfig.signals
                 .appliedOutputPeriodMs(500)
@@ -184,7 +164,6 @@ public class DriveTrain extends SubsystemBase {
             rightFollowConfig.follow(rightMotorLead);
             rightFollowConfig.idleMode(IdleMode.kCoast);
             rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
-            rightFollowConfig.voltageCompensation(NOMINAL_VOLTAGE);
             rightFollowConfig.openLoopRampRate(0.25); //0.15
             rightFollowConfig.signals
                 .appliedOutputPeriodMs(500)
@@ -338,104 +317,29 @@ public class DriveTrain extends SubsystemBase {
     // ---- Teleop Drive ----
 
     /**
-     * Unified teleop drive command. Accepts two joystick axis suppliers.
-     * In ARCADE mode: leftY = forward speed, rightY = rotation.
-     * In TANK mode: leftY = left wheel speed, rightY = right wheel speed.
-     * OrientationMode (field-oriented vs robot-relative) is applied automatically.
+     * Teleop drive command. leftY = left wheel speed, rightY = right wheel speed.
+     * boost (0.0–1.0) interpolates the speed scale from SPEED_SCALE to 1.0.
      */
-    public Command teleopDriveCommand(DoubleSupplier leftYSupplier, DoubleSupplier rightYSupplier) {
+    public Command teleopDriveCommand(DoubleSupplier leftYSupplier, DoubleSupplier rightYSupplier, DoubleSupplier boostSupplier) {
         return new RunCommand(
-            () -> drive(SPEED_SCALE * leftYSupplier.getAsDouble(), SPEED_SCALE * rightYSupplier.getAsDouble()),
+            () -> {
+                double scale = SPEED_SCALE + (1.0 - SPEED_SCALE) * boostSupplier.getAsDouble();
+                drive(scale * leftYSupplier.getAsDouble(), scale * rightYSupplier.getAsDouble());
+            },
             this
         );
     }
 
-    /**
-     * Main drive dispatch. Applies deadband, then routes through orientation mode and drive mode.
-     * Supports 4 states: Robot-Relative Tank, Robot-Relative Arcade,
-     * Field-Oriented Tank, Field-Oriented Arcade.
-     */
+    /** Applies deadband and drives in robot-relative tank mode. */
     public void drive(double leftY, double rightY) {
-        double lY = MathUtil.applyDeadband(leftY, JOYSTICK_DEADBAND);
-        double rY = MathUtil.applyDeadband(rightY, JOYSTICK_DEADBAND);
-
-        if (orientationMode == OrientationMode.FIELD_ORIENTED) {
-            double headingRad = getHeading().getRadians();
-            switch (driveMode) {
-                case ARCADE -> fieldOrientedArcade(lY, rY, headingRad);
-                case TANK   -> fieldOrientedTank(lY, rY, headingRad);
-            }
-        } else {
-            switch (driveMode) {
-                case ARCADE -> driver.arcadeDrive(lY, rY);
-                case TANK   -> driver.tankDrive(lY, rY);
-            }
-        }
-    }
-
-    /**
-     * Field-oriented arcade drive.
-     * Projects the driver's field-forward intent onto the robot's forward axis.
-     * BUG-03: Only the linear (fwd) component is rotated through the heading —
-     * rot is a normalized angular rate, not a spatial axis, so applying a rotation
-     * matrix to it produces heading-dependent coupling with no physical basis.
-     * rot is left robot-relative (unchanged).
-     */
-    private void fieldOrientedArcade(double fwd, double rot, double headingRad) {
-        double robotFwd = fwd * Math.cos(headingRad);
-        driver.arcadeDrive(robotFwd, rot);
-    }
-
-    /**
-     * Field-oriented tank drive.
-     * Decomposes tank (left, right) into (forward, turn), applies the field-oriented
-     * rotation matrix, then recomposes back to (left, right) wheel commands.
-     */
-    private void fieldOrientedTank(double left, double right, double headingRad) {
-        double fwd  = (left + right) / 2.0;
-        double turn = (right - left) / 2.0;
-        double robotFwd = fwd * Math.cos(headingRad);
-        driver.tankDrive(robotFwd - turn, robotFwd + turn);
+        driver.tankDrive(
+            MathUtil.applyDeadband(leftY, JOYSTICK_DEADBAND),
+            MathUtil.applyDeadband(rightY, JOYSTICK_DEADBAND)
+        );
     }
 
     public void stop() {
         driver.stopMotor();
-    }
-
-    // ---- Mode Toggling ----
-
-    public void toggleDriveMode() {
-        this.driveMode = switch (this.driveMode) {
-            case ARCADE -> DriveMode.TANK;
-            case TANK   -> DriveMode.ARCADE;
-        };
-        refreshDriveStateString();
-    }
-
-    public void toggleOrientationMode() {
-        this.orientationMode = switch (this.orientationMode) {
-            case ROBOT_RELATIVE -> OrientationMode.FIELD_ORIENTED;
-            case FIELD_ORIENTED -> OrientationMode.ROBOT_RELATIVE;
-        };
-        refreshDriveStateString();
-    }
-
-    public void setDriveMode(DriveMode mode) {
-        this.driveMode = mode;
-        refreshDriveStateString();
-    }
-
-    public DriveMode getDriveMode() {
-        return this.driveMode;
-    }
-
-    public void setOrientationMode(OrientationMode mode) {
-        this.orientationMode = mode;
-        refreshDriveStateString();
-    }
-
-    public OrientationMode getOrientationMode() {
-        return this.orientationMode;
     }
 
     // ---- Testing ----
@@ -536,24 +440,9 @@ public class DriveTrain extends SubsystemBase {
     // ---- Telemetry ----
 
     private void updateTelemetry() {
-        field.setRobotPose(getPose()); // INEFF-03: putData("Field") is in constructor; only pose updates here
+        field.setRobotPose(getPose());
         SmartDashboard.putNumber("DriveTrain/LeftDistMeters",  getLeftDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/RightDistMeters", getRightDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/HeadingDeg",      getHeading().getDegrees());
-        SmartDashboard.putString("DriveTrain/DriveMode",       driveMode.toString());
-        SmartDashboard.putString("DriveTrain/OrientationMode", orientationMode.toString());
-        SmartDashboard.putString("DriveTrain/DriveState",      driveStateString); // INEFF-05: cached
-        SmartDashboard.putBoolean("DriveTrain/IsFieldOriented",
-            orientationMode == OrientationMode.FIELD_ORIENTED);
-        SmartDashboard.putBoolean("DriveTrain/IsTankDrive",
-            driveMode == DriveMode.TANK);
-    }
-
-    /** Rebuilds the drive state string; called only when driveMode or orientationMode changes. */
-    private void refreshDriveStateString() {
-        String orient = (orientationMode == OrientationMode.FIELD_ORIENTED)
-            ? "Field-Oriented" : "Robot-Relative";
-        String mode = (driveMode == DriveMode.TANK) ? "Tank" : "Arcade";
-        driveStateString = orient + " " + mode;
     }
 }

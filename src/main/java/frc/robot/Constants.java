@@ -42,7 +42,6 @@ public final class Constants {
 
         // Motor config
         public static final int CURRENT_LIMIT = 40; //60   // amps
-        public static final double NOMINAL_VOLTAGE = 12.0; // volts — used for voltage compensation
 
         // Driving
         public static final double JOYSTICK_DEADBAND = 0.05;

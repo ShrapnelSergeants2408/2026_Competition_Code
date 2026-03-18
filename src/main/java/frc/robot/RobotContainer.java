@@ -92,13 +92,12 @@ public class RobotContainer {
    * that runs whenever no other command is using that subsystem.
    */
   private void configureDefaultCommands() {
-    // Single unified drive command — DriveTrain internally handles all 4 mode combinations
-    // (field-oriented tank, field-oriented arcade, robot-relative tank, robot-relative arcade).
-    // Defaults to field-oriented tank.
+    // Robot-relative tank drive. Right trigger analog-boosts speed from 70% to 100%.
     drivetrain.setDefaultCommand(
         drivetrain.teleopDriveCommand(
             () -> -m_driverController.getLeftY(),
-            () -> -m_driverController.getRightY()
+            () -> -m_driverController.getRightY(),
+            m_driverController::getRightTriggerAxis
         )
     );
   }
@@ -144,8 +143,8 @@ public class RobotContainer {
    * Configure button-to-command bindings.
    *
    * Driver (port 0) — drive motions only:
-   *   Back  = toggle Tank / Arcade drive mode
-   *   Start = toggle Field-Oriented / Robot-Relative orientation
+   *   Left Y / Right Y = tank drive (robot-relative)
+   *   RT               = speed boost (analog, 70% → 100%)
    *
    * Operator (port 1) — intake and shooting:
    *   Y        = toggle shooter spin-up to distance-resolved RPM / coast stop
@@ -173,13 +172,6 @@ public class RobotContainer {
    */
   private void configureBindings() {
     // ── Driver ────────────────────────────────────────────────────────────────
-    m_driverController.back().onTrue(
-        Commands.runOnce(() -> drivetrain.toggleDriveMode(), drivetrain)
-    );
-    m_driverController.start().onTrue(
-        Commands.runOnce(() -> drivetrain.toggleOrientationMode(), drivetrain)
-    );
-
     // ── Operator ──────────────────────────────────────────────────────────────
 
     // Y: toggle shooter spin-up to distance-resolved RPM — first press spins up,
