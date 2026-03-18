@@ -41,7 +41,7 @@ public final class Constants {
         public static final int RIGHT_FOLLOW_CAN_ID = 23;
 
         // Motor config
-        public static final int CURRENT_LIMIT = 60;    // amps
+        public static final int CURRENT_LIMIT = 40; //60   // amps
         public static final double NOMINAL_VOLTAGE = 12.0; // volts — used for voltage compensation
 
         // Driving
@@ -54,7 +54,7 @@ public final class Constants {
         public static final double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS * Math.PI;
         public static final double TRACK_WIDTH_METERS = 0.546;
 
-        public static final double SPEED_SCALE = 0.5;
+        public static final double SPEED_SCALE = 0.7; //0.5
     }
 
     public static class IntakeConstants {}
