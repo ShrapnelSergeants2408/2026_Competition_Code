@@ -145,6 +145,7 @@ public class RobotContainer {
    * Driver (port 0) — drive motions only:
    *   Left Y / Right Y = tank drive (robot-relative)
    *   RT               = speed boost (analog, 70% → 100%)
+   *   Back             = re-seed pose from vision (use when robot is in front of a visible tag)
    *
    * Operator (port 1) — intake and shooting:
    *   Y        = toggle shooter spin-up to distance-resolved RPM / coast stop
@@ -172,6 +173,12 @@ public class RobotContainer {
    */
   private void configureBindings() {
     // ── Driver ────────────────────────────────────────────────────────────────
+    // Back: re-seed pose from vision on demand. Useful mid-match after a hard collision
+    // or if the driver knows the robot is in front of a visible AprilTag.
+    m_driverController.back().onTrue(
+        Commands.runOnce(() -> drivetrain.initializePose(null), drivetrain)
+    );
+
     // ── Operator ──────────────────────────────────────────────────────────────
 
     // Y: toggle shooter spin-up to distance-resolved RPM — first press spins up,
@@ -228,6 +235,14 @@ public class RobotContainer {
     m_operatorController.povLeft().onTrue(
         Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(15.0); })
     );
+  }
+
+  /**
+   * Seeds the drivetrain pose from vision at teleop init (no auto command available).
+   * Falls back to field origin with a dashboard warning if no vision fix is available.
+   */
+  public void initializePose() {
+    drivetrain.initializePose(null);
   }
 
   /**

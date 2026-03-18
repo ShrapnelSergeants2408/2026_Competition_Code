@@ -9,6 +9,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -286,32 +287,69 @@ public class DriveTrain extends SubsystemBase {
     // ---- Pose Initialization ----
 
     /**
-     * Set the robot's starting pose before autonomous.
+     * Seeds the pose estimator with the best available pose.
      * Priority: (1) vision AprilTag fix, (2) PathPlanner auto starting pose, (3) field origin.
+     *
+     * Call this at auto init (pass the selected auto command) and at teleop init (pass null).
+     *
+     * Vision staleness: uses a generous 5 s window at init time — a slightly old fix is far
+     * better than defaulting to field origin. The in-match window (0.5 s) is stricter because
+     * stale data can confuse active path following.
+     *
+     * Red alliance: PathPlanner stores paths in blue-alliance coordinates. getStartingPose()
+     * returns those raw coordinates, so we flip manually when the DS reports red alliance.
      */
     public void initializePose(Command autoCommand) {
         Pose2d initialPose = null;
 
-        // Use vision if it can see AprilTags right now
+        // Priority 1: vision — accept measurements up to POSE_INIT_MAX_VISION_AGE_SECONDS old.
         if (visionSubsystem != null) {
-            Optional<VisionMeasurement> visionMeasurement =
-                visionSubsystem.getBestVisionMeasurementIfFresh();
+            Optional<VisionMeasurement> visionMeasurement = visionSubsystem.getBestVisionMeasurement();
             if (visionMeasurement.isPresent()) {
-                initialPose = visionMeasurement.get().estimatedPose();
+                double ageSec = Timer.getFPGATimestamp() - visionMeasurement.get().timestampSeconds();
+                if (ageSec <= POSE_INIT_MAX_VISION_AGE_SECONDS) {
+                    initialPose = visionMeasurement.get().estimatedPose();
+                }
             }
         }
 
-        // Fall back to the starting pose defined in the selected PathPlanner auto
+        // Priority 2: PathPlanner auto starting pose (carries position + heading).
+        // Flip X and heading for red alliance — getStartingPose() is always blue-side coords.
         if (initialPose == null && autoCommand instanceof PathPlannerAuto ppAuto) {
             initialPose = ppAuto.getStartingPose();
+            var alliance = DriverStation.getAlliance();
+            if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+                initialPose = flipForRedAlliance(initialPose);
+            }
         }
 
-        // Last resort: field origin
+        // Priority 3: field origin fallback — warn the drive team loudly.
         if (initialPose == null) {
             initialPose = new Pose2d();
+            DriverStation.reportWarning(
+                "DriveTrain: pose could not be initialized from vision or auto starting pose. " +
+                "Defaulting to field origin — heading will be incorrect if robot is not " +
+                "facing the field-forward direction.", false);
+            SmartDashboard.putBoolean("DriveTrain/HeadingInitialized", false);
+        } else {
+            SmartDashboard.putBoolean("DriveTrain/HeadingInitialized", true);
         }
 
         resetPose(initialPose);
+    }
+
+    /**
+     * Mirrors a blue-alliance pose to its red-alliance equivalent.
+     * Flips X across the field center; Y is unchanged; heading is reflected
+     * across the vertical axis (180° - angle).
+     */
+    private static Pose2d flipForRedAlliance(Pose2d pose) {
+        final double FIELD_LENGTH_METERS = 16.541;
+        return new Pose2d(
+            FIELD_LENGTH_METERS - pose.getX(),
+            pose.getY(),
+            Rotation2d.fromDegrees(180.0).minus(pose.getRotation())
+        );
     }
 
     // ---- Teleop Drive ----

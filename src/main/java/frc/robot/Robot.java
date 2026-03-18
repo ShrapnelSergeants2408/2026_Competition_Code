@@ -99,6 +99,11 @@ Logger.start(); // Start logging! No more data receivers, replay sources, or met
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+
+    // Re-seed pose from vision at teleop start. Covers practice sessions where auto
+    // is skipped, and catches any drift that accumulated during auto.
+    // If no vision fix is available, warns the drive team via DriverStation and dashboard.
+    m_robotContainer.initializePose();
   }
 
   /** This function is called periodically during operator control. */

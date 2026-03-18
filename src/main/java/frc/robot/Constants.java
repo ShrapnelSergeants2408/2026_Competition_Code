@@ -43,6 +43,11 @@ public final class Constants {
         // Motor config
         public static final int CURRENT_LIMIT = 40; //60   // amps
 
+        // Pose initialization — vision measurements up to this many seconds old are
+        // accepted when seeding the pose at auto/teleop init. More generous than the
+        // in-match freshness window because any recent fix beats defaulting to field origin.
+        public static final double POSE_INIT_MAX_VISION_AGE_SECONDS = 5.0;
+
         // Driving
         public static final double JOYSTICK_DEADBAND = 0.05;
         public static final int TELEMETRY_PERIOD_LOOPS = 5;
