@@ -141,6 +141,7 @@ public class DriveTrain extends SubsystemBase {
             rightLeadConfig.idleMode(IdleMode.kCoast);
             rightLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
             rightLeadConfig.voltageCompensation(NOMINAL_VOLTAGE);
+            rightLeadConfig.openLoopRampRate(0.15);
             rightLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
             rightLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
             rightMotorLead.configure(   rightLeadConfig,
@@ -153,6 +154,7 @@ public class DriveTrain extends SubsystemBase {
             leftLeadConfig.idleMode(IdleMode.kCoast);
             leftLeadConfig.smartCurrentLimit(CURRENT_LIMIT);
             leftLeadConfig.voltageCompensation(NOMINAL_VOLTAGE);
+            leftLeadConfig.openLoopRampRate(0.15);
             leftLeadConfig.encoder.positionConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO);
             leftLeadConfig.encoder.velocityConversionFactor(WHEEL_CIRCUMFERENCE_METERS / GEAR_RATIO / 60.0);
             leftMotorLead.configure(leftLeadConfig,
@@ -168,6 +170,7 @@ public class DriveTrain extends SubsystemBase {
             leftFollowConfig.idleMode(IdleMode.kCoast);
             leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
             leftFollowConfig.voltageCompensation(NOMINAL_VOLTAGE);
+            leftFollowConfig.openLoopRampRate(0.15);
             leftFollowConfig.signals
                 .appliedOutputPeriodMs(500)
                 .primaryEncoderPositionPeriodMs(500)
@@ -182,6 +185,7 @@ public class DriveTrain extends SubsystemBase {
             rightFollowConfig.idleMode(IdleMode.kCoast);
             rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
             rightFollowConfig.voltageCompensation(NOMINAL_VOLTAGE);
+            rightFollowConfig.openLoopRampRate(0.15);
             rightFollowConfig.signals
                 .appliedOutputPeriodMs(500)
                 .primaryEncoderPositionPeriodMs(500)
