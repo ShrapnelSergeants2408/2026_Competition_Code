@@ -206,7 +206,14 @@ public class Shooter extends SubsystemBase {
     }
 
     /**
-     * Resolve the best available shooting distance (feet) using a four-tier priority:
+     * Resolve the best available shooting distance (feet).
+     *
+     * Test mode priority (POV-locked):
+     *   1. POV preset — locked for the session; vision/odometry are computed for
+     *      telemetry visibility but do not affect the target distance.
+     *   2. Default 10 ft (if no POV preset has been set this session)
+     *
+     * Competition mode priority:
      *   1. Vision pose (fresh AprilTag measurement)
      *   2. Odometry pose (drivetrain encoder + gyro)
      *   3. POV preset — explicitly set by operator via D-pad
@@ -214,38 +221,63 @@ public class Shooter extends SubsystemBase {
      */
     private void resolveShooterDistance() {
         Pose2d hubPose = getAllianceHubPose();
-        visionDistanceFt = -1.0;
-        odometryDistanceFt = -1.0;
 
-        // ── Priority 1: Vision ──────────────────────────────────────────────
+        // Always compute vision/odometry distances for telemetry, regardless of mode.
+        visionDistanceFt = -1.0;
         if (vision != null) {
             var freshMeasurement = vision.getBestVisionMeasurementIfFresh();
             if (freshMeasurement.isPresent()) {
                 VisionMeasurement measurement = freshMeasurement.get();
                 if (isVisionMeasurementUsable(measurement)) {
-                    Pose2d visionPose = measurement.estimatedPose();
-                    double meters = visionPose.getTranslation().getDistance(hubPose.getTranslation());
+                    double meters = measurement.estimatedPose().getTranslation()
+                        .getDistance(hubPose.getTranslation());
                     visionDistanceFt = meters / 0.3048;
-                    currentTargetDistance = visionDistanceFt;
-                    targetRPM = getRPMFromDistance(visionDistanceFt);
-                    distanceSource = "Vision";
-                    return;
                 }
             }
         }
 
-        // ── Priority 2: Odometry ────────────────────────────────────────────
+        odometryDistanceFt = -1.0;
         if (drivetrain != null) {
-            Pose2d robotPose = drivetrain.getPose();
-            double meters = robotPose.getTranslation().getDistance(hubPose.getTranslation());
+            double meters = drivetrain.getPose().getTranslation()
+                .getDistance(hubPose.getTranslation());
             odometryDistanceFt = meters / 0.3048;
+        }
+
+        // ── Test mode: POV preset is locked — ignores vision and odometry ───
+        // This prevents the distance from changing between shots during testing.
+        // Use POV hat buttons to set distance before each shot group.
+        if (DriverStation.isTest()) {
+            if (povPresetSet) {
+                currentTargetDistance = povPresetDistanceFt;
+                targetRPM = getRPMFromDistance(povPresetDistanceFt);
+                distanceSource = "POV Preset (Test Lock)";
+            } else {
+                currentTargetDistance = 10.0;
+                targetRPM = getRPMFromDistance(10.0);
+                distanceSource = "Default";
+            }
+            return;
+        }
+
+        // ── Competition mode priority chain ─────────────────────────────────
+
+        // Priority 1: Vision
+        if (visionDistanceFt > 0) {
+            currentTargetDistance = visionDistanceFt;
+            targetRPM = getRPMFromDistance(visionDistanceFt);
+            distanceSource = "Vision";
+            return;
+        }
+
+        // Priority 2: Odometry
+        if (odometryDistanceFt > 0) {
             currentTargetDistance = odometryDistanceFt;
             targetRPM = getRPMFromDistance(odometryDistanceFt);
             distanceSource = "Odometry";
             return;
         }
 
-        // ── Priority 3: POV preset ──────────────────────────────────────────
+        // Priority 3: POV preset
         if (povPresetSet) {
             currentTargetDistance = povPresetDistanceFt;
             targetRPM = getRPMFromDistance(povPresetDistanceFt);
@@ -253,7 +285,7 @@ public class Shooter extends SubsystemBase {
             return;
         }
 
-        // ── Priority 4: Default 10 ft ───────────────────────────────────────
+        // Priority 4: Default 10 ft
         currentTargetDistance = 10.0;
         targetRPM = getRPMFromDistance(10.0);
         distanceSource = "Default";

@@ -155,10 +155,13 @@ public class RobotContainer {
    *   A        = clear distance preset (return to automatic distance resolution)
    *   LB       = toggle intake (clockwise — both intake & trigger at 100%)
    *   RB       = toggle removal (counterclockwise — both intake & trigger at 100%)
-   *   POV 0°   = stage distance preset  7.5 ft (test mode only)
-   *   POV 90°  = stage distance preset 10.0 ft (test mode only)
-   *   POV 180° = stage distance preset 12.5 ft (test mode only)
-   *   POV 270° = stage distance preset 15.0 ft (test mode only)
+   *   POV   0° = stage distance preset  5.0 ft (test mode only — N)
+   *   POV  45° = stage distance preset  7.5 ft (test mode only — NE)
+   *   POV  90° = stage distance preset 10.0 ft (test mode only — E)
+   *   POV 135° = stage distance preset 12.5 ft (test mode only — SE)
+   *   POV 180° = stage distance preset 15.0 ft (test mode only — S)
+   *   POV 225° = stage distance preset 17.5 ft (test mode only — SW)
+   *   POV 270° = stage distance preset max dist (test mode only — W)
    *
    * Concurrent operation:
    *   Y (spinUpCommand, requires Shooter) and LT/LB/RT (require only Feeder) do NOT
@@ -200,12 +203,6 @@ public class RobotContainer {
     // No subsystem requirements — always schedulable, even mid-shoot.
     m_operatorController.b().onTrue(stopAllCommand());
 
-    // A: clear staged distance preset, returning to automatic distance resolution.
-    /* 
-    m_operatorController.a().onTrue(
-        Commands.runOnce(shooter::clearDistancePreset)
-    );
-    */
 
 
     
@@ -221,19 +218,28 @@ public class RobotContainer {
     // Requires only Feeder — runs concurrently with Y spin-up.
     m_operatorController.rightBumper().whileTrue(feeder.ejectCommand());
 
-    // POV: stage a distance preset (test mode only).
-    // 0°=7.5ft, 90°=10ft, 180°=12.5ft, 270°=15ft
-    m_operatorController.povUp().onTrue(
+    // POV: stage a distance preset (test mode only). 45° increments — NW (315°) unbound.
+    // N=5ft, NE=7.5ft, E=10ft, SE=12.5ft, S=15ft, SW=17.5ft, W=max(18.75ft)
+    m_operatorController.pov(0).onTrue(
+        Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(5.0); })
+    );
+    m_operatorController.pov(45).onTrue(
         Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(7.5); })
     );
-    m_operatorController.povRight().onTrue(
+    m_operatorController.pov(90).onTrue(
         Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(10.0); })
     );
-    m_operatorController.povDown().onTrue(
+    m_operatorController.pov(135).onTrue(
         Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(12.5); })
     );
-    m_operatorController.povLeft().onTrue(
+    m_operatorController.pov(180).onTrue(
         Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(15.0); })
+    );
+    m_operatorController.pov(225).onTrue(
+        Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(17.5); })
+    );
+    m_operatorController.pov(270).onTrue(
+        Commands.runOnce(() -> { if (DriverStation.isTest()) shooter.setDistancePreset(18.75); })
     );
   }
 
