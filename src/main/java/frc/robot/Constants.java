@@ -53,6 +53,8 @@ public final class Constants {
         public static final double WHEEL_DIAMETER_METERS = 0.1524; // 6 inches
         public static final double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS * Math.PI;
         public static final double TRACK_WIDTH_METERS = 0.546;
+
+        public static final double SPEED_SCALE = 0.5;
     }
 
     public static class IntakeConstants {}

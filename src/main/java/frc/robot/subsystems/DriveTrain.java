@@ -345,7 +345,7 @@ public class DriveTrain extends SubsystemBase {
      */
     public Command teleopDriveCommand(DoubleSupplier leftYSupplier, DoubleSupplier rightYSupplier) {
         return new RunCommand(
-            () -> drive(leftYSupplier.getAsDouble(), rightYSupplier.getAsDouble()),
+            () -> drive(SPEED_SCALE * leftYSupplier.getAsDouble(), SPEED_SCALE * rightYSupplier.getAsDouble()),
             this
         );
     }
