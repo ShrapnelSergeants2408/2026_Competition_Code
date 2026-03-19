@@ -149,6 +149,7 @@ public class DriveTrain extends SubsystemBase {
         // from followers, reducing unnecessary CAN bus traffic.
         SparkMaxConfig leftFollowConfig = new SparkMaxConfig();
             leftFollowConfig.follow(leftMotorLead);
+            leftFollowConfig.inverted(false);
             leftFollowConfig.idleMode(IdleMode.kCoast);
             leftFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
             leftFollowConfig.openLoopRampRate(0.25); //0.15
@@ -164,6 +165,7 @@ public class DriveTrain extends SubsystemBase {
         SparkMaxConfig rightFollowConfig = new SparkMaxConfig();
             rightFollowConfig.follow(rightMotorLead);
             rightFollowConfig.idleMode(IdleMode.kCoast);
+            rightFollowConfig.inverted(true);
             rightFollowConfig.smartCurrentLimit(CURRENT_LIMIT);
             rightFollowConfig.openLoopRampRate(0.25); //0.15
             rightFollowConfig.signals
