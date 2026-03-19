@@ -44,7 +44,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
-
+import edu.wpi.first.math.controller.PIDController;
 
 public class DriveTrain extends SubsystemBase {
 
@@ -413,6 +413,22 @@ public class DriveTrain extends SubsystemBase {
 
     public ChassisSpeeds getRobotRelativeSpeeds() {
         return kinematics.toChassisSpeeds(getWheelSpeeds());
+    }
+
+    public Command turnToAngle(double targetDegrees){
+        var pid = new PIDController(0.04, 0.0, 0.005);
+        pid.enableContinuousInput(-180,180);
+        pid.setTolerance(2.0);
+        pid.setSetpoint(targetDegrees);
+        return Commands.run(
+            () -> {
+                double output = pid.calculate(getHeading().getDegrees());
+                driver.tankDrive(-output, output, false);
+            },
+            this
+        )
+        .until(pid::atSetpoint)
+        .finallyDo(() -> driver.stopMotor());
     }
 
     // ---- Odometry and Pose ----

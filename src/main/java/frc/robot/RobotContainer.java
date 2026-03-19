@@ -12,6 +12,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
+
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -100,7 +102,10 @@ public class RobotContainer {
             m_driverController::getRightTriggerAxis
         )
     );
+
+    NamedCommands.registerCommand("s1 to hp auto", drivetrain.turnToAngle(124.3));
   }
+
 
   /**
    * Feed only — runs the feeder in feed direction when the shooter is at target speed
