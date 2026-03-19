@@ -41,7 +41,7 @@ public final class Constants {
         public static final int RIGHT_FOLLOW_CAN_ID = 23;
 
         // Motor config
-        public static final int CURRENT_LIMIT = 40; //60   // amps
+        public static final int CURRENT_LIMIT = 60; //60   // amps
 
         // Pose initialization — vision measurements up to this many seconds old are
         // accepted when seeding the pose at auto/teleop init. More generous than the
