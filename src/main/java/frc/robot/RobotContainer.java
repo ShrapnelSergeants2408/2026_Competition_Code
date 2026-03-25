@@ -96,14 +96,73 @@ public class RobotContainer {
   private void configureDefaultCommands() {
     // Robot-relative tank drive. Right trigger analog-boosts speed from 70% to 100%.
     drivetrain.setDefaultCommand(
-        drivetrain.teleopDriveCommand(
-            () -> -m_driverController.getLeftY(),
-            () -> -m_driverController.getRightY(),
-            m_driverController::getRightTriggerAxis
-        )
+      drivetrain.teleopDriveCommand(
+          () -> -m_driverController.getLeftY(),
+          () -> -m_driverController.getRightY(),
+          m_driverController::getRightTriggerAxis
+      )
     );
 
-    NamedCommands.registerCommand("s1 to hp auto", drivetrain.turnToAngle(124.3));
+    // ---- Named Commands for PathPlanner Autos ----
+    // These must be registered before any auto is run.
+    // PathPlanner uses a static map looked up at auto runtime, so as long as
+    // these are registered before getAutonomousCommand() is called (auto init),
+    // placement here is safe even though AutoBuilder.configure() already ran.
+
+    // Shoot sequence:
+    //   Phase 1 — spin shooter up to distance-resolved RPM, wait for speed (max 2s)
+    //   Phase 2 — run shooter + feeder together for 8 seconds
+    //   Cleanup — stop everything
+    NamedCommands.registerCommand("Shoot5Sec", Commands.sequence(
+        Commands.run(shooter::resolveDistanceAndSpin, shooter)
+            .until(shooter::isAtTargetSpeed)
+            .withTimeout(2.0),
+        Commands.run(() -> {
+            shooter.resolveDistanceAndSpin();
+            feeder.startFeed();
+        }, shooter, feeder)
+        .withTimeout(8.0)
+    ).finallyDo(interrupted -> {
+        shooter.stopShooter();
+        feeder.stopAll();
+    }));
+
+    //Shoot for 8 seconds regardless of speed
+    NamedCommands.registerCommand("Shoot", Commands.sequence(
+        Commands.run(() -> {
+            shooter.resolveDistanceAndSpin();
+            feeder.startFeed();
+        }, shooter, feeder)
+        .withTimeout(8.0)
+    ).finallyDo(interrupted -> {
+        shooter.stopShooter();
+        feeder.stopAll();
+    }));
+
+    // Spin up only (no feeder) — use at start of action paths to pre-spin
+    NamedCommands.registerCommand("SpinUpShooter",
+        Commands.runOnce(shooter::resolveDistanceAndSpin, shooter));
+
+    // Stop everything
+    NamedCommands.registerCommand("StopAll", Commands.runOnce(() -> {
+        shooter.stopShooter();
+        feeder.stopAll();
+    }, shooter, feeder));
+
+    // Intake control
+    NamedCommands.registerCommand("StartIntake", Commands.runOnce(() ->
+        feeder.intakeCommand().schedule(), feeder));
+
+    NamedCommands.registerCommand("StopIntake",
+        Commands.runOnce(feeder::stopAll, feeder));
+
+    // 3-second wait (outpost human player reload)
+    NamedCommands.registerCommand("Wait3Sec", 
+      Commands.waitSeconds(3.0));
+
+  
+
+    //NamedCommands.registerCommand("s1 to hp auto", drivetrain.turnToAngle(124.3));  //wrong location
   }
 
 

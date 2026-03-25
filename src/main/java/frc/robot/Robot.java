@@ -91,6 +91,13 @@ Logger.start(); // Start logging! No more data receivers, replay sources, or met
   public void autonomousPeriodic() {}
 
   @Override
+  public void autonomousExit(){
+    if (m_autonomousCommand != null) {
+      m_autonomousCommand.cancel();
+    }
+  }
+
+  @Override
   public void teleopInit() {
     // This makes sure that the autonomous stops running when
     // teleop starts running. If you want the autonomous to
