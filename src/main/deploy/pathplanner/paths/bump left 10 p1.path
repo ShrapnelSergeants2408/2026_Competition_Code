@@ -4,24 +4,40 @@
     {
       "anchor": {
         "x": 3.581,
-        "y": 7.278
+        "y": 5.55
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.5810000000000004,
-        "y": 7.278
+        "x": 3.1055384406238042,
+        "y": 5.55
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 3.714,
-        "y": 6.864
+        "x": 2.339,
+        "y": 5.55
       },
       "prevControl": {
-        "x": 4.019695304963106,
-        "y": 5.911870607257861
+        "x": 2.339,
+        "y": 5.3
+      },
+      "nextControl": {
+        "x": 2.339,
+        "y": 6.17789415227557
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 2.339,
+        "y": 6.051
+      },
+      "prevControl": {
+        "x": 2.526498909377969,
+        "y": 5.8856393064175405
       },
       "nextControl": null,
       "isLocked": false,
@@ -45,7 +61,7 @@
     "rotation": 0.0
   },
   "reversed": false,
-  "folder": "Actual Autos",
+  "folder": "Actual Paths",
   "idealStartingState": {
     "velocity": 0,
     "rotation": 0.0
