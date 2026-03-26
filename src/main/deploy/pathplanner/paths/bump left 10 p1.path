@@ -8,7 +8,7 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.1055384406238042,
+        "x": 2.5810000000000004,
         "y": 5.55
       },
       "isLocked": false,
@@ -16,28 +16,28 @@
     },
     {
       "anchor": {
-        "x": 2.339,
+        "x": 2.971,
         "y": 5.55
       },
       "prevControl": {
-        "x": 2.339,
-        "y": 5.3
+        "x": 2.971,
+        "y": 4.55
       },
       "nextControl": {
-        "x": 2.339,
-        "y": 6.17789415227557
+        "x": 2.971,
+        "y": 6.55
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 2.339,
-        "y": 6.051
+        "x": 2.968,
+        "y": 6.975
       },
       "prevControl": {
-        "x": 2.526498909377969,
-        "y": 5.8856393064175405
+        "x": 3.219923360486153,
+        "y": 6.601508258686664
       },
       "nextControl": null,
       "isLocked": false,
@@ -61,7 +61,7 @@
     "rotation": 0.0
   },
   "reversed": false,
-  "folder": "Actual Paths",
+  "folder": "p1",
   "idealStartingState": {
     "velocity": 0,
     "rotation": 0.0
