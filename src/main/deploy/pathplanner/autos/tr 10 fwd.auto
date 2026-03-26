@@ -11,7 +11,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "center 10 p1"
+                  "pathName": "trench right 10 p1"
                 }
               },
               {
@@ -39,6 +39,6 @@
     }
   },
   "resetOdom": true,
-  "folder": "New autos",
+  "folder": "fwd autos",
   "choreoAuto": false
 }

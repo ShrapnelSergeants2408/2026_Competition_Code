@@ -32,13 +32,44 @@
         {
           "type": "named",
           "data": {
-            "name": "stopAll"
+            "name": "StopAll"
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "p2 bl 7.5 to depot"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "StartIntake"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "end bl 7.5 to depot"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "StopAll"
           }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "New autos",
+  "folder": "depot autos",
   "choreoAuto": false
 }

@@ -1,0 +1,44 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "bump right 10 p1"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "SpinUpShooter"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Shoot"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "stopAll"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "fwd autos",
+  "choreoAuto": false
+}
