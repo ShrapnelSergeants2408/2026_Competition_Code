@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "trench left 10 p1"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "tl 10 to neutral"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Actual autos",
+  "choreoAuto": false
+}

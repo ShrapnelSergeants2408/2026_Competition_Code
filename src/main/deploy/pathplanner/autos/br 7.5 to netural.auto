@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "bump right 7.5 p1"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "br 7.5 to neutral"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Actual autos",
+  "choreoAuto": false
+}
