@@ -7,13 +7,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "bump left 7.5 p1"
+            "pathName": null
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "bl 7.5 to neutral"
+            "pathName": "end bl 7.5 to neutral"
           }
         }
       ]

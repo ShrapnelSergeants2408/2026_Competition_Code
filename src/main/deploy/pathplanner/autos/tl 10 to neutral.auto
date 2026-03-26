@@ -7,13 +7,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "trench left 10 p1"
+            "pathName": null
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "tl 10 to neutral"
+            "pathName": "end tl 10 to neutral"
           }
         }
       ]

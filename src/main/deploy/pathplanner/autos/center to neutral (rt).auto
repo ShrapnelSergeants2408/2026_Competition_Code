@@ -17,7 +17,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "center 7.5 p1"
+                  "pathName": null
                 }
               }
             ]
@@ -32,7 +32,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "c 7.5 neutral (rt)"
+            "pathName": "end c 7.5 neutral (rt)"
           }
         }
       ]
