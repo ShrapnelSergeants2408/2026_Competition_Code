@@ -11,7 +11,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "center 7.5 p1"
+                  "pathName": "center 10 p1"
                 }
               },
               {
@@ -27,6 +27,12 @@
           "type": "named",
           "data": {
             "name": "Shoot"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "stopAll"
           }
         }
       ]
