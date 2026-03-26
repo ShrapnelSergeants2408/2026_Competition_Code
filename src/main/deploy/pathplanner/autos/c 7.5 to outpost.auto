@@ -11,7 +11,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "bump left 10 p1"
+                  "pathName": "center 7.5 p1"
                 }
               },
               {
@@ -34,11 +34,17 @@
           "data": {
             "name": "stopAll"
           }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "end c 7.5 to outpost"
+          }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "New autos",
+  "folder": "outpost autos",
   "choreoAuto": false
 }

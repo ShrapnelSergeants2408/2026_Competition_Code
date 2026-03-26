@@ -10,7 +10,10 @@
   ],
   "autoFolders": [
     "Actual autos",
-    "New autos"
+    "neutral autos",
+    "depot autos",
+    "fwd autos",
+    "outpost autos"
   ],
   "defaultMaxVel": 2.0,
   "defaultMaxAccel": 2.0,
