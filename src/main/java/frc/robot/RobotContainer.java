@@ -80,12 +80,13 @@ public class RobotContainer {
     }
     driverCamera = tempCamera;
 
+    configureDefaultCommands();
+
     // Build auto chooser – must run after DriveTrain constructor calls AutoBuilder.configure()
     autoChooser = AutoBuilder.buildAutoChooser();
     autoChooser.setDefaultOption("Do Nothing", doNothingAuto);
     SmartDashboard.putData("Auto Chooser", autoChooser);
 
-    configureDefaultCommands();
     configureBindings();
   }
 
