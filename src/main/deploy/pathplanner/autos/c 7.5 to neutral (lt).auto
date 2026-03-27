@@ -36,13 +36,19 @@
           }
         },
         {
+          "type": "path",
+          "data": {
+            "pathName": "p2 c 7.5 neutral (lt)"
+          }
+        },
+        {
           "type": "parallel",
           "data": {
             "commands": [
               {
                 "type": "path",
                 "data": {
-                  "pathName": "p2 c 7.5 neutral (lt)"
+                  "pathName": "end c 7.5 neutral (lt)"
                 }
               },
               {
@@ -52,12 +58,6 @@
                 }
               }
             ]
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "end c 7.5 neutral (lt)"
           }
         },
         {

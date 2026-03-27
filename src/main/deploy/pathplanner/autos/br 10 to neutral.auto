@@ -5,21 +5,71 @@
     "data": {
       "commands": [
         {
-          "type": "path",
+          "type": "parallel",
           "data": {
-            "pathName": null
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "bump right 10 p1"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "SpinUpShooter"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Shoot"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "StopAll"
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "end br 10 to neutral"
+            "pathName": "p2 br 10 to neutral"
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "end br 10 to neutral"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "StartIntake"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "StopAll"
           }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "Actual autos",
+  "folder": "neutral autos",
   "choreoAuto": false
 }
