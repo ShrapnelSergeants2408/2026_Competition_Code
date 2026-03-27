@@ -362,8 +362,8 @@ public class DriveTrain extends SubsystemBase {
     /**
      * Teleop drive command. leftY = left wheel speed, rightY = right wheel speed.
      * boost (0.0–1.0) interpolates the speed scale from SPEED_SCALE to 1.0.
-     * When reverseDriving is active, both inputs are negated so pushing forward
-     * drives the robot's rear end first. Left/right assignment is unchanged.
+     * When reverseDriving is active, left axis drives right wheels (negated) and
+     * right axis drives left wheels (negated), so the robot's rear acts as the front.
      */
     public Command teleopDriveCommand(DoubleSupplier leftYSupplier, DoubleSupplier rightYSupplier, DoubleSupplier boostSupplier) {
         return new RunCommand(
@@ -372,7 +372,7 @@ public class DriveTrain extends SubsystemBase {
                 double leftY  = leftYSupplier.getAsDouble();
                 double rightY = rightYSupplier.getAsDouble();
                 if (reverseDriving) {
-                    drive(scale * -leftY, scale * -rightY);
+                    drive(scale * -rightY, scale * -leftY);
                 } else {
                     drive(scale * leftY, scale * rightY);
                 }
