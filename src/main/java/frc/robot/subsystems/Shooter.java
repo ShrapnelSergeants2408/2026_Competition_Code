@@ -341,6 +341,7 @@ public class Shooter extends SubsystemBase {
 
     @Override
     public void periodic() {
+        //resolveShooterDistance()
         updateSmartDashboardTuning();
         if (++telemetryLoopCounter >= SHOOTER_TELEMETRY_PERIOD_LOOPS) {
             telemetryLoopCounter = 0;
