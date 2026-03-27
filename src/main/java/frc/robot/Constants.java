@@ -166,8 +166,8 @@ public final class Constants {
         // Position: 1" from front edge = 0.355m forward from center (0.71/2 - 0.0254)
         // TODO: Measure actual robot dimensions and camera mounting position
         public static final Transform3d ROBOT_TO_FRONT_CAM = new Transform3d(
-            new Translation3d(0.368, -0.181, 0.362),  // forward, left, up (meters) // TODO: Verify measurements
-            //new Translation3d(0.102, -0.181, 0.089),  // forward, left, up (meters) // TODO: Verify measurements
+            //new Translation3d(0.368, -0.181, 0.362),  // forward, left, up (meters) // TODO: Verify measurements
+            new Translation3d(0.102, -0.181, 0.089),  // forward, left, up (meters) // TODO: Verify measurements
             new Rotation3d(0, Math.toRadians(-30), 0) // roll, pitch, yaw // TODO: Measure actual camera angles
         );
 
