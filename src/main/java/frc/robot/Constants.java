@@ -118,7 +118,7 @@ public final class Constants {
         // 72" target height, 0.556 slip factor, 4" wheel diameter, calibrated from test data).
         // Update SHOOTER_MOTOR_PULLEY_TEETH/SHOOTER_SHAFT_PULLEY_TEETH when gearing changes.
         public static final double[] DISTANCES_FEET    = {5,    7.5,  10, 12.5, 15,   17.5, 18.75};
-        public static final double[] DISTANCE_RPM_MAP  = {1750, 2000, 2200, 2450, 2650, 2800, 2900};
+        public static final double[] DISTANCE_RPM_MAP  = {2150, 2400, 2600, 2850, 3050, 3200, 3300};
     }
 
     public static class SensorConstants {
