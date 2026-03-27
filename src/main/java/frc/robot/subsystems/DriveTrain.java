@@ -90,6 +90,9 @@ public class DriveTrain extends SubsystemBase {
     // Dependencies
     private final Vision visionSubsystem;
 
+    // Reverse driving — swaps front/back so the robot's rear acts as the front.
+    private boolean reverseDriving = false;
+
     private int telemetryLoopCounter = 0;
 
     public DriveTrain(Vision visionSubsystem) {
@@ -359,15 +362,28 @@ public class DriveTrain extends SubsystemBase {
     /**
      * Teleop drive command. leftY = left wheel speed, rightY = right wheel speed.
      * boost (0.0–1.0) interpolates the speed scale from SPEED_SCALE to 1.0.
+     * When reverseDriving is active, both inputs are negated so pushing forward
+     * drives the robot's rear end first. Left/right assignment is unchanged.
      */
     public Command teleopDriveCommand(DoubleSupplier leftYSupplier, DoubleSupplier rightYSupplier, DoubleSupplier boostSupplier) {
         return new RunCommand(
             () -> {
                 double scale = SPEED_SCALE + (1.0 - SPEED_SCALE) * boostSupplier.getAsDouble();
-                drive(scale * leftYSupplier.getAsDouble(), scale * rightYSupplier.getAsDouble());
+                double leftY  = leftYSupplier.getAsDouble();
+                double rightY = rightYSupplier.getAsDouble();
+                if (reverseDriving) {
+                    drive(scale * -leftY, scale * -rightY);
+                } else {
+                    drive(scale * leftY, scale * rightY);
+                }
             },
             this
         );
+    }
+
+    /** Toggles reverse driving mode. Intended for the driver Start button. */
+    public void toggleReverseDriving() {
+        reverseDriving = !reverseDriving;
     }
 
     /** Applies deadband and drives in robot-relative tank mode. */
@@ -500,5 +516,6 @@ public class DriveTrain extends SubsystemBase {
         SmartDashboard.putNumber("DriveTrain/LeftDistMeters",  getLeftDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/RightDistMeters", getRightDistanceMeters());
         SmartDashboard.putNumber("DriveTrain/HeadingDeg",      getHeading().getDegrees());
+        SmartDashboard.putBoolean("DriveTrain/ReverseDriving", reverseDriving);
     }
 }

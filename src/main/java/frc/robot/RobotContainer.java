@@ -248,6 +248,12 @@ public class RobotContainer {
         Commands.runOnce(() -> drivetrain.initializePose(null), drivetrain)
     );
 
+    // Start: toggle reverse driving — robot's rear becomes the front.
+    // Press once to flip orientation, press again to restore normal.
+    m_driverController.start().onTrue(
+        Commands.runOnce(drivetrain::toggleReverseDriving, drivetrain)
+    );
+
     // ── Operator ──────────────────────────────────────────────────────────────
 
     // Y: toggle shooter spin-up to distance-resolved RPM — first press spins up,
