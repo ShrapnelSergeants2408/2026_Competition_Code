@@ -13,6 +13,7 @@ import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -39,6 +40,7 @@ public class Shooter extends SubsystemBase {
     // ── Reusable control requests (avoid per-loop allocation) ─────────────────
     private final VelocityVoltage velocityRequest = new VelocityVoltage(0).withSlot(0);
     private final NeutralOut neutralRequest = new NeutralOut();
+    private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 
     // ── State ─────────────────────────────────────────────────────────────────
     private double targetRPM = TARGET_RPM_10_FEET;
@@ -111,6 +113,11 @@ public class Shooter extends SubsystemBase {
     /** Coast the shooter wheel to a stop. */
     public void stopShooter() {
         shooterMotor.setControl(neutralRequest);
+    }
+
+    /** Run shooter wheel in reverse at 50% duty cycle (unjam / back-spin). */
+    public void reverseShooter() {
+        shooterMotor.setControl(dutyCycleRequest.withOutput(-0.5));
     }
 
     /** Read actual shooter mechanism velocity in RPM (motor encoder RPM × gear ratio). */
@@ -208,18 +215,31 @@ public class Shooter extends SubsystemBase {
     /**
      * Resolve the best available shooting distance (feet).
      *
+     * Autonomous mode:
+     *   Always 10 ft — fixed distance, no sensor input.
+     *
      * Test mode priority (POV-locked):
      *   1. POV preset — locked for the session; vision/odometry are computed for
      *      telemetry visibility but do not affect the target distance.
      *   2. Default 10 ft (if no POV preset has been set this session)
      *
-     * Competition mode priority:
-     *   1. Vision pose (fresh AprilTag measurement)
-     *   2. Odometry pose (drivetrain encoder + gyro)
-     *   3. POV preset — explicitly set by operator via D-pad
+     * Teleop mode priority:
+     *   1. POV preset — operator override; highest priority while held
+     *   2. Vision pose (fresh AprilTag measurement)
+     *   3. Odometry pose (drivetrain encoder + gyro)
      *   4. Default 10 ft
      */
     private void resolveShooterDistance() {
+        // ── Autonomous: always shoot from 10 ft ─────────────────────────────
+        if (DriverStation.isAutonomous()) {
+            currentTargetDistance = 10.0;
+            targetRPM = getRPMFromDistance(10.0);
+            distanceSource = "Auto Default";
+            visionDistanceFt = -1.0;
+            odometryDistanceFt = -1.0;
+            return;
+        }
+
         Pose2d hubPose = getAllianceHubPose();
 
         // Always compute vision/odometry distances for telemetry, regardless of mode.
@@ -259,9 +279,17 @@ public class Shooter extends SubsystemBase {
             return;
         }
 
-        // ── Competition mode priority chain ─────────────────────────────────
+        // ── Teleop priority chain ────────────────────────────────────────────
 
-        // Priority 1: Vision
+        // Priority 1: POV preset — operator override; highest priority while held
+        if (povPresetSet) {
+            currentTargetDistance = povPresetDistanceFt;
+            targetRPM = getRPMFromDistance(povPresetDistanceFt);
+            distanceSource = "POV Preset";
+            return;
+        }
+
+        // Priority 2: Vision
         if (visionDistanceFt > 0) {
             currentTargetDistance = visionDistanceFt;
             targetRPM = getRPMFromDistance(visionDistanceFt);
@@ -269,19 +297,11 @@ public class Shooter extends SubsystemBase {
             return;
         }
 
-        // Priority 2: Odometry
+        // Priority 3: Odometry
         if (odometryDistanceFt > 0) {
             currentTargetDistance = odometryDistanceFt;
             targetRPM = getRPMFromDistance(odometryDistanceFt);
             distanceSource = "Odometry";
-            return;
-        }
-
-        // Priority 3: POV preset
-        if (povPresetSet) {
-            currentTargetDistance = povPresetDistanceFt;
-            targetRPM = getRPMFromDistance(povPresetDistanceFt);
-            distanceSource = "POV Preset";
             return;
         }
 
