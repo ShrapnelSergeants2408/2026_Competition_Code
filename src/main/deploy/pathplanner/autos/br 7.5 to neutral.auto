@@ -11,7 +11,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "bump left 10 p1"
+                  "pathName": "bump right 7.5 p1"
                 }
               },
               {
@@ -36,19 +36,13 @@
           }
         },
         {
-          "type": "path",
-          "data": {
-            "pathName": "p2 bl 10 to neutral"
-          }
-        },
-        {
           "type": "parallel",
           "data": {
             "commands": [
               {
                 "type": "path",
                 "data": {
-                  "pathName": "end bl 10 to neutral"
+                  "pathName": "end br 7.5 to neutral"
                 }
               },
               {
