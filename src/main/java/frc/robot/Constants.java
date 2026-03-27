@@ -147,7 +147,7 @@ public final class Constants {
         public static final double PPLTV_MAX_VELOCITY = MAX_ROBOT_VELOCITY_MPS; // matches MAX_MODULE_SPEED
         public static final double PPLTV_Q_X = 0.0625;
         public static final double PPLTV_Q_Y = 0.125;
-        public static final double PPLTV_Q_THETA = 0.75;
+        public static final double PPLTV_Q_THETA = 2.0;
         public static final double PPLTV_R_VEL = 1.0;
         public static final double PPLTV_R_OMEGA = 2.0;
     }
