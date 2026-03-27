@@ -64,6 +64,8 @@ public class Feeder extends SubsystemBase {
                 "Intake motor (CAN 31) config failed: " + intakeConfigError, false);
         }
 
+        intakeMotor.clearFaults();
+
         // SparkMAX trigger/hopper — CAN 32, open-loop, bidirectional
         triggerMotor = new SparkMax(TRIGGER_MOTOR_ID, MotorType.kBrushless);
         SparkMaxConfig triggerConfig = new SparkMaxConfig();
@@ -79,6 +81,8 @@ public class Feeder extends SubsystemBase {
             DriverStation.reportWarning(
                 "Trigger motor (CAN 32) config failed: " + triggerConfigError, false);
         }
+
+        triggerMotor.clearFaults();
 
         // Photo sensor — skip DIO allocation until the sensor is installed
         photoSensor = PHOTO_SENSOR_ENABLED ? new DigitalInput(PHOTO_SENSOR_DIO_PORT) : null;
