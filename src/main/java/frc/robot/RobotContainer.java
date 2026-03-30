@@ -19,23 +19,28 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.VisionConstants;
-import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.DriveTrain;
 import frc.robot.subsystems.Feeder;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.Vision;
 
 /**
- * This class is where the bulk of the robot should be declared. Since Command-based is a
- * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
- * periodic methods (other than the scheduler calls). Instead, the structure of the robot (including
- * subsystems, commands, and trigger mappings) should be declared here.
+ * The wiring harness of the robot.
+ *
+ * <p>This is where the robot's physical structure is declared in code:
+ * <ul>
+ *   <li>Subsystems are instantiated in dependency order (Vision → DriveTrain → Shooter; Feeder standalone).
+ *   <li>Default commands are set (tank drive on DriveTrain).
+ *   <li>Named commands are registered for use by PathPlanner autonomous routines.
+ *   <li>Controller buttons are mapped to commands in {@link #configureBindings()}.
+ *   <li>The autonomous chooser is built from all available PathPlanner autos.
+ * </ul>
+ *
+ * <p>Very little logic lives here — it is intentionally a configuration class.
+ * Subsystem behavior lives in the subsystem classes; command logic lives in
+ * command factory methods on those subsystems or inline lambdas here.
  */
 public class RobotContainer {
-  // The robot's subsystems and commands are defined here...
-
-  // Climber subsystem
-  private final Climber climber = new Climber();
 
   // Vision must be constructed before DriveTrain (passed into its constructor).
   // DriveTrain must be constructed before Shooter (both are injected into Shooter).

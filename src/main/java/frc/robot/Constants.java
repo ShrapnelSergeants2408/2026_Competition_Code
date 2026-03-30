@@ -25,49 +25,77 @@ import edu.wpi.first.math.numbers.N3;
 
 public final class Constants {
 
+    /** Controller USB port assignments. */
     public static class OperatorConstants {
+        /** Xbox controller port for the driver (drive motions only). */
         public static final int DRIVER_CONTROLLER_PORT = 0;
+        /** Xbox controller port for the operator (intake, shooting, distance overrides). */
         public static final int OPERATOR_CONTROLLER_PORT = 1;
     }
 
+    /** Reserved for future climber implementation. */
     public static class ClimberConstants {}
 
+    /** Constants for the differential drive subsystem. */
     public static class DriveTrainConstants {
 
         // CAN IDs
+        /** CAN ID of the left-side lead SparkMax motor controller. */
         public static final int LEFT_LEAD_CAN_ID = 20;
+        /** CAN ID of the right-side lead SparkMax motor controller. */
         public static final int RIGHT_LEAD_CAN_ID = 22;
+        /** CAN ID of the left-side follower SparkMax motor controller. */
         public static final int LEFT_FOLLOW_CAN_ID = 21;
+        /** CAN ID of the right-side follower SparkMax motor controller. */
         public static final int RIGHT_FOLLOW_CAN_ID = 23;
 
         // Motor config
+        /** Smart current limit (amps) applied to all four drive SparkMax controllers. */
         public static final int CURRENT_LIMIT = 60; //60   // amps
 
         // Pose initialization — vision measurements up to this many seconds old are
         // accepted when seeding the pose at auto/teleop init. More generous than the
         // in-match freshness window because any recent fix beats defaulting to field origin.
+        /**
+         * Maximum age (seconds) of a vision measurement accepted when seeding pose at
+         * auto/teleop init. More generous than the in-match freshness window
+         * ({@link VisionConstants#MAX_VISION_AGE_SECONDS}) because any recent fix is better
+         * than defaulting to field origin.
+         */
         public static final double POSE_INIT_MAX_VISION_AGE_SECONDS = 5.0;
 
         // Driving
+        /** Joystick input below this magnitude is treated as zero (prevents drift from controller dead zones). */
         public static final double JOYSTICK_DEADBAND = 0.05;
+        /** Publish telemetry to SmartDashboard every N scheduler loops (reduces dashboard update overhead). */
         public static final int TELEMETRY_PERIOD_LOOPS = 5;
 
         // Physical dimensions
+        /** Drive motor-to-wheel gear reduction ratio (motor rotations per wheel rotation). */
         public static final double GEAR_RATIO = 8.46;
+        /** Wheel diameter in meters (6-inch wheels). Used to compute encoder conversion factors. */
         public static final double WHEEL_DIAMETER_METERS = 0.1524; // 6 inches
+        /** Wheel circumference in meters — derived from {@link #WHEEL_DIAMETER_METERS}. */
         public static final double WHEEL_CIRCUMFERENCE_METERS = WHEEL_DIAMETER_METERS * Math.PI;
+        /** Distance between left and right wheel contact patches (meters). Used by kinematics. */
         public static final double TRACK_WIDTH_METERS = 0.546;
 
+        /** Default drive speed scale (0.0–1.0). Right trigger boost overrides up to 1.0. */
         public static final double SPEED_SCALE = 0.7; //0.5
     }
 
+    /** Reserved for future intake implementation. */
     public static class IntakeConstants {}
 
+    /** Constants for the Shooter and Feeder subsystems (flywheel, intake roller, trigger/hopper). */
     public static class ShooterConstants {
 
         // CAN IDs
+        /** CAN ID of the TalonFX (Kraken X60) shooter flywheel motor controller. */
         public static final int SHOOTER_MOTOR_ID = 30;  // TalonFX (Phoenix 6) — shooter wheel
+        /** CAN ID of the SparkMax intake roller motor controller. */
         public static final int INTAKE_MOTOR_ID  = 31;  // SparkMAX — intake roller (primary + secondary linked, CCW only)
+        /** CAN ID of the SparkMax trigger/hopper motor controller. */
         public static final int TRIGGER_MOTOR_ID = 32;  // SparkMAX — trigger/hopper (bidirectional)
 
         // Motor inversion — verify polarity on bench, flip here if wrong
@@ -121,41 +149,64 @@ public final class Constants {
         public static final double[] DISTANCE_RPM_MAP  = {2150, 2400, 2600, 2850, 3050, 3200, 3300};
     }
 
+    /** Constants for ball-detection sensors. */
     public static class SensorConstants {
-        // Photo sensor (ball detection) — DIO port 1
-        // Set PHOTO_SENSOR_ENABLED = true once the sensor is physically installed
+        /** roboRIO DIO port number for the ball-presence photo sensor. */
         public static final int PHOTO_SENSOR_DIO_PORT = 1;
+        /**
+         * Set to {@code true} once the photo sensor is physically installed on the robot.
+         * While {@code false}, {@code Feeder.hasBall()} always returns {@code false} and
+         * no DIO port is allocated.
+         */
         public static final boolean PHOTO_SENSOR_ENABLED = false;   // disabled until installed
+        /** Set to {@code true} if the sensor output is inverted (beam-break vs reflective). Verify on bench. */
         public static final boolean PHOTO_SENSOR_INVERTED = false;  // TODO: verify polarity on bench
     }
 
+    /** Constants for PathPlanner autonomous path following and the PPLTVController. */
     public static class Auto {
-        // Single authoritative max robot velocity.
-        // 15 ft/s converted to m/s. Used for both PathPlanner speed limiting
-        // and the PPLTVController gain-table upper bound so they stay in sync.
+        /**
+         * Maximum robot translation speed (m/s). 15 ft/s converted to SI.
+         * Used as the upper bound for both PathPlanner motion constraints and the
+         * PPLTVController gain-table so they stay synchronized.
+         */
         public static final double MAX_ROBOT_VELOCITY_MPS = 15.0 * 0.3048; // 4.572 m/s
 
-        // PathPlanner motion limits
+        /** PathPlanner maximum wheel speed (m/s) — matches {@link #MAX_ROBOT_VELOCITY_MPS}. */
         public static final double MAX_MODULE_SPEED = MAX_ROBOT_VELOCITY_MPS; // m/s
+        /** PathPlanner maximum translational acceleration (m/s²). */
         public static final double MAX_ACCELERATION = 2.0; // m/s^2
+        /** PathPlanner maximum rotational velocity (degrees/s). */
         public static final double MAX_ANGULAR_VELOCITY = 540.0; // deg/s
+        /** PathPlanner maximum rotational acceleration (degrees/s²). */
         public static final double MAX_ANGULAR_ACCELERATION = 720.0; // deg/s^2
 
         // PPLTVController tuning defaults (state tolerances and control effort limits).
         // Live adjustment is available on SmartDashboard during test mode only.
+        /** Control loop period (seconds) passed to the PPLTVController. Must match robot loop rate (20 ms). */
         public static final double PPLTV_DT = 0.02;
-        public static final double PPLTV_MAX_VELOCITY = MAX_ROBOT_VELOCITY_MPS; // matches MAX_MODULE_SPEED
+        /** Maximum velocity (m/s) used to pre-compute the LTV gain table. Match {@link #MAX_ROBOT_VELOCITY_MPS}. */
+        public static final double PPLTV_MAX_VELOCITY = MAX_ROBOT_VELOCITY_MPS;
+        /** Q matrix x-position state weight. Lower = less aggressive x correction. */
         public static final double PPLTV_Q_X = 0.0625;
+        /** Q matrix y-position state weight. Lower = less aggressive y correction. */
         public static final double PPLTV_Q_Y = 0.125;
+        /** Q matrix heading state weight. Higher = more aggressive heading correction. */
         public static final double PPLTV_Q_THETA = 0.75;
+        /** R matrix velocity control effort weight. Higher = softer velocity commands. */
         public static final double PPLTV_R_VEL = 1.0;
+        /** R matrix angular velocity control effort weight. Higher = softer turning commands. */
         public static final double PPLTV_R_OMEGA = 2.0;
     }
 
+    /** Constants for the Vision subsystem — camera names, transforms, and pose estimation quality gates. */
     public static class VisionConstants {
         // Camera names (must match PhotonVision configuration)
+        /** Camera name as configured in PhotonVision web UI (case-sensitive). Front-facing Pi4 + PiCam v2. */
         public static final String FRONT_CAMERA_NAME = "Front_Camera";
+        /** Camera name as configured in PhotonVision web UI (case-sensitive). Rear-facing Pi5 + OV9281. */
         public static final String REAR_CAMERA_NAME = "Rear_Camera";
+        /** USB driver camera name — passed to CameraServer for driver feed only; not used for pose estimation. */
         public static final String DRIVER_CAMERA_NAME = "Driver_Camera";
 
         // Camera transforms (robot-to-camera)

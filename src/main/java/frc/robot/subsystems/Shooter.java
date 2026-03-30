@@ -27,9 +27,21 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 /**
- * Shooter subsystem — owns only the flywheel (CAN 30 TalonFX) and distance/zone logic.
- * Intake and trigger motors now live in the Feeder subsystem so that intake/eject
- * commands can run concurrently with the shooter wheel spinning.
+ * Shooter subsystem — owns the flywheel motor and all shooting logic.
+ *
+ * <p>Hardware: CAN 30 TalonFX (Kraken X60) running Phoenix 6 on-controller
+ * velocity PID (slot 0). The intake roller (CAN 31) and trigger/hopper (CAN 32)
+ * live in {@link Feeder} so that intake/eject commands can run concurrently
+ * with the shooter wheel spinning (different subsystem = no scheduler conflict).
+ *
+ * <p>Distance resolution: every time the shooter is commanded to spin,
+ * {@link #resolveShooterDistance()} picks the best available distance source
+ * (POV preset → Vision → Odometry → Default 10 ft) and looks up the target
+ * RPM from the 7-point interpolation table in {@link frc.robot.Constants.ShooterConstants}.
+ *
+ * <p>PID tuning: kP, kI, kD, kV are readable/writable from SmartDashboard
+ * under {@code Shooter/Tuning/} in test mode. Values are only applied to the
+ * TalonFX when they actually change (avoids blocking CAN writes every loop).
  */
 public class Shooter extends SubsystemBase {
 
@@ -65,6 +77,14 @@ public class Shooter extends SubsystemBase {
     private int telemetryLoopCounter = 0;
 
     // ── Constructor ───────────────────────────────────────────────────────────
+    /**
+     * Constructs the Shooter subsystem.
+     *
+     * @param vision     the Vision subsystem used for fresh pose measurements in distance resolution;
+     *                   may be {@code null} if vision is unavailable
+     * @param drivetrain the DriveTrain subsystem used for odometry-based distance fallback;
+     *                   may be {@code null} if odometry is unavailable
+     */
     public Shooter(Vision vision, DriveTrain drivetrain) {
         this.vision = vision;
         this.drivetrain = drivetrain;
@@ -159,8 +179,11 @@ public class Shooter extends SubsystemBase {
     }
 
     /**
-     * Pre-set the distance/RPM target without spinning the motor.
-     * Use with POV buttons so the operator can stage the shot before pressing shoot.
+     * Pre-sets the distance/RPM target without spinning the motor.
+     * Called by POV button bindings so the operator can stage the shot distance
+     * before pressing the spin-up button.
+     *
+     * @param distanceFeet shooting distance in feet to lock in as the target
      */
     public void setDistancePreset(double distanceFeet) {
         povPresetDistanceFt = distanceFeet;
@@ -170,6 +193,10 @@ public class Shooter extends SubsystemBase {
         povPresetSet = true;
     }
 
+    /**
+     * Clears a POV distance preset, returning the distance source to automatic
+     * (Vision → Odometry → Default). Called when the operator releases a POV button.
+     */
     public void clearDistancePreset() {
         povPresetSet = false;
         if ("POV Preset".equals(distanceSource)) {
@@ -177,6 +204,12 @@ public class Shooter extends SubsystemBase {
         }
     }
 
+    /**
+     * Returns the currently active target shooting distance in feet.
+     * Reflects whichever source won the last distance resolution cycle.
+     *
+     * @return target distance in feet
+     */
     public double getTargetDistance() {
         return currentTargetDistance;
     }

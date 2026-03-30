@@ -46,6 +46,21 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.controller.PIDController;
 
+/**
+ * Differential (tank) drive subsystem.
+ *
+ * <p>Owns four NEO/SparkMax drive motors (CAN 20–23), a NavX2 gyroscope, and a
+ * {@link DifferentialDrivePoseEstimator} that fuses wheel encoders, gyro heading,
+ * and optional vision measurements from {@link Vision} into a continuous field-relative
+ * pose estimate ({@code Pose2d}).
+ *
+ * <p>PathPlanner integration: {@code AutoBuilder.configure()} is called once in the
+ * constructor. PathPlanner then drives the robot during autonomous by calling
+ * {@link #driveRobotRelative(ChassisSpeeds)} every loop tick.
+ *
+ * <p>Default command: tank drive from the driver Xbox controller (left Y / right Y),
+ * with right-trigger analog boost from {@code SPEED_SCALE} to 100%.
+ */
 public class DriveTrain extends SubsystemBase {
 
     // Hardware
@@ -95,6 +110,17 @@ public class DriveTrain extends SubsystemBase {
 
     private int telemetryLoopCounter = 0;
 
+    /**
+     * Constructs the DriveTrain subsystem.
+     *
+     * <p>Configures motors, initializes the LTV controller with SmartDashboard tuning
+     * entries, and calls {@code AutoBuilder.configure()} to register this subsystem
+     * with PathPlanner. {@code AutoBuilder.configure()} must only be called once —
+     * calling it again (e.g., in test mode) registers duplicate command factories.
+     *
+     * @param visionSubsystem the Vision subsystem to use for pose fusion;
+     *                        may be {@code null} if vision is unavailable
+     */
     public DriveTrain(Vision visionSubsystem) {
         this.visionSubsystem = visionSubsystem;
         configureMotors();
@@ -394,12 +420,19 @@ public class DriveTrain extends SubsystemBase {
         );
     }
 
+    /** Stops both sides of the drivetrain immediately. */
     public void stop() {
         driver.stopMotor();
     }
 
     // ---- Testing ----
 
+    /**
+     * Placeholder subsystem self-test. Returns a single passing result.
+     * Replace with real encoder and motor checks when implementing test mode.
+     *
+     * @return list of {@link Result} objects from each check
+     */
     public static List<Result> testDriveTrain() {
         return List.of(Result.pass("dummy test"));
     }
@@ -421,16 +454,35 @@ public class DriveTrain extends SubsystemBase {
         );
     }
 
+    /**
+     * Converts field-relative chassis speeds to robot-relative and drives.
+     * Useful for field-oriented control; not used in teleop tank drive.
+     *
+     * @param fieldRelativeSpeeds desired speeds in the field reference frame
+     */
     public void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds) {
         driveRobotRelative(
             ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose().getRotation())
         );
     }
 
+    /**
+     * Returns the robot's current chassis speeds in the robot reference frame.
+     * Required by PathPlanner's {@code AutoBuilder.configure()}.
+     *
+     * @return robot-relative {@link ChassisSpeeds}
+     */
     public ChassisSpeeds getRobotRelativeSpeeds() {
         return kinematics.toChassisSpeeds(getWheelSpeeds());
     }
 
+    /**
+     * Returns a command that turns the robot to a target heading using a PID controller.
+     * Finishes when within 2 degrees of the target; stops motors on end.
+     *
+     * @param targetDegrees desired heading in degrees (CCW positive, field-relative)
+     * @return command that turns to the angle and ends when on target
+     */
     public Command turnToAngle(double targetDegrees){
         var pid = new PIDController(0.04, 0.0, 0.005);
         pid.enableContinuousInput(-180,180);
@@ -449,19 +501,38 @@ public class DriveTrain extends SubsystemBase {
 
     // ---- Odometry and Pose ----
 
+    /**
+     * Returns the robot's current estimated position on the field.
+     * Fuses odometry and vision; used by PathPlanner and Shooter distance resolution.
+     *
+     * @return estimated {@link Pose2d} (x/y in meters, rotation in radians)
+     */
     public Pose2d getPose() {
         return poseEstimator.getEstimatedPosition();
     }
 
+    /**
+     * Resets the pose estimator to a known pose.
+     * Called by PathPlanner and by {@link #initializePose(Command)}.
+     *
+     * @param pose the pose to reset to
+     */
     public void resetPose(Pose2d pose) {
         poseEstimator.resetPosition(
             getHeading(), getLeftDistanceMeters(), getRightDistanceMeters(), pose);
     }
 
+    /**
+     * Returns the robot's current heading from the gyroscope.
+     * Negated to convert NavX convention (CW positive) to WPILib convention (CCW positive).
+     *
+     * @return current heading as a {@link Rotation2d}
+     */
     public Rotation2d getHeading() {
         return Rotation2d.fromDegrees(-gyro.getAngle()); // Inverted for CCW positive
     }
 
+    /** Zeroes the gyroscope. The robot's current heading becomes 0°. */
     public void resetGyro() {
         gyro.reset();
     }
@@ -505,6 +576,13 @@ public class DriveTrain extends SubsystemBase {
 
     // ---- PathPlanner Auto ----
 
+    /**
+     * Returns a command that runs the named PathPlanner autonomous routine.
+     * The auto name must match a file in {@code src/main/deploy/pathplanner/autos/}.
+     *
+     * @param autoName the name of the auto (without {@code .auto} extension)
+     * @return a command representing the full autonomous routine
+     */
     public Command getAutoCommand(String autoName) {
         return new PathPlannerAuto(autoName);
     }

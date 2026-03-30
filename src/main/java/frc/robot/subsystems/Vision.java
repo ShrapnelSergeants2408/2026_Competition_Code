@@ -27,6 +27,26 @@ import org.photonvision.PhotonPoseEstimator.PoseStrategy;
 import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
+/**
+ * Vision subsystem — reads AprilTag detections from two PhotonVision coprocessors
+ * and produces field-relative robot pose estimates.
+ *
+ * <p>Cameras: {@code Front_Camera} (Pi4 + PiCam v2, forward-facing) and
+ * {@code Rear_Camera} (Pi5 + OV9281, rear-facing). Camera names must match the
+ * PhotonVision web UI configuration exactly.
+ *
+ * <p>Per-loop caching: both camera results are fetched once at the top of
+ * {@code periodic()}. All subsequent reads within the same loop use the cached
+ * results, avoiding redundant NetworkTables reads. The best measurement is stored
+ * in {@code cachedMeasurement} and accessed via {@link #getBestVisionMeasurement()}
+ * or {@link #getBestVisionMeasurementIfFresh()}.
+ *
+ * <p><b>Known issue (2026 season):</b> The vision system did not produce usable
+ * data during competition matches. Cameras appeared connected during testing but
+ * generated regular data-transmission errors during matches. See
+ * {@code subsystems.md} and {@code Vision.updateTelemetry()} for details and
+ * troubleshooting guidance.
+ */
 public class Vision extends SubsystemBase {
     // PhotonVision cameras
     private final PhotonCamera frontCamera;

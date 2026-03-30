@@ -21,8 +21,18 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 /**
  * Feeder subsystem — owns the intake roller (CAN 31) and trigger/hopper (CAN 32).
- * Separated from the Shooter subsystem so intake/eject commands can run concurrently
- * with the shooter wheel spinning (they require different subsystems).
+ *
+ * <p>Intentionally separated from {@link Shooter} so that intake and eject commands
+ * can run concurrently with the shooter flywheel spinning. Because they require
+ * different subsystems, the CommandScheduler allows them to execute simultaneously
+ * without conflict.
+ *
+ * <p>State machine: IDLE → INTAKE / FEED / EJECT → (optional) JAM_CLEAR → previous state.
+ * Jam detection is implemented but currently disabled; see {@code periodic()}.
+ *
+ * <p>Ball detection: a photo sensor at DIO 1 is wired but not installed. Set
+ * {@link frc.robot.Constants.SensorConstants#PHOTO_SENSOR_ENABLED} to {@code true}
+ * once the sensor is physically mounted.
  */
 public class Feeder extends SubsystemBase {
 
@@ -113,6 +123,13 @@ public class Feeder extends SubsystemBase {
 
     // ── Sensor ────────────────────────────────────────────────────────────────
 
+    /**
+     * Returns {@code true} if the ball-presence sensor detects a ball in the feeder path.
+     * Always returns {@code false} when {@code PHOTO_SENSOR_ENABLED} is {@code false}
+     * (sensor not installed).
+     *
+     * @return {@code true} if a ball is detected
+     */
     public boolean hasBall() {
         if (photoSensor == null) return false;
         boolean raw = photoSensor.get();
@@ -121,6 +138,12 @@ public class Feeder extends SubsystemBase {
 
     // ── State access ──────────────────────────────────────────────────────────
 
+    /**
+     * Returns the feeder's current state machine state.
+     * Useful for telemetry and for commands that need to avoid overriding a JAM_CLEAR.
+     *
+     * @return current {@link FeederState}
+     */
     public FeederState getState() { return currentState; }
 
     // ── Jam detection ─────────────────────────────────────────────────────────
