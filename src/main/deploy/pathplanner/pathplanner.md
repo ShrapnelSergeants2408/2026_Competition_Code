@@ -58,8 +58,12 @@ All paths and autos follow a consistent naming pattern:
 
 ### Distance
 
-- **10** — Robot starts 10 feet from the starting line
-- **7.5** — Robot starts 7.5 feet from the starting line
+The distance number refers to **how far the shooter is from the center of the hub at the shooting position** — not the robot's starting distance from the wall. Every auto that includes a shot drives the robot to a position where the shooter is exactly this far from the hub, rotates to align the shooter with the hub opening, and then fires.
+
+- **10** — Shooter is 10 feet from the hub center at the shooting position
+- **7.5** — Shooter is 7.5 feet from the hub center at the shooting position
+
+These values feed directly into the distance-to-RPM interpolation table in `ShooterConstants`. A `SpinUpShooter` named command spins the flywheel to the correct RPM for that distance before the robot arrives at the shooting position, and a `Shoot` named command (or `Shoot5Sec`) feeds fuel for 8 seconds once the robot is in position (targeting approximately 8 fuel at ~1 fuel per second).
 
 ### Objective (End Goal)
 
@@ -80,9 +84,9 @@ Some paths use a phase prefix when a multi-segment auto requires separate path f
 | **p2** | Second phase path — used after the initial movement |
 
 **Example names:**
-- `bl 10 fwd` — Bump Left, 10 ft start, drive forward only
-- `tr 7.5 to outpost` — Trench Right, 7.5 ft start, navigate to outpost
-- `p2 c 10 to depot` — Second phase path for Center, 10 ft, ending at depot
+- `bl 10 fwd` — Start Bump Left, drive to shooting position 10 ft from hub, shoot, stop
+- `tr 7.5 to depot` — Start Trench Right, drive to shooting position 7.5 ft from hub, shoot, then navigate to depot
+- `p2 c 10 to depot` — Second phase path for the Center 10 ft auto, continuing to depot after shooting
 
 ---
 
@@ -90,59 +94,69 @@ Some paths use a phase prefix when a multi-segment auto requires separate path f
 
 All 25 autonomous routines available in the 2026 season:
 
-### Forward Only (Drive and Shoot, No Post-Shot Navigation)
+### Auto Sequence
+
+Every auto that includes a shot follows this sequence:
+1. **Drive** from the starting line to the shooting position (shooter aligned with hub at the specified distance)
+2. **SpinUpShooter** — flywheel ramps to the RPM for that distance while traveling (pre-spun before arrival)
+3. **Shoot** or **Shoot5Sec** — feeds fuel into the shooter for 8 seconds (~8 fuel at 1/second)
+4. **Drive** to the post-shot objective (depot, neutral zone, outpost), or stop if `fwd`
+
+### Forward Only (Drive to Shooting Position, Shoot, Stop)
 
 | Auto Name | Description |
 |-----------|-------------|
-| `bl 10 fwd` | Start Bump Left at 10 ft, drive forward and shoot |
-| `bl 7.5 fwd` | Start Bump Left at 7.5 ft, drive forward and shoot |
-| `br 10 fwd` | Start Bump Right at 10 ft, drive forward and shoot |
-| `br 7.5 fwd` | Start Bump Right at 7.5 ft, drive forward and shoot |
-| `c 10 fwd` | Start Center at 10 ft, drive forward and shoot |
-| `c 7.5 fwd` | Start Center at 7.5 ft, drive forward and shoot |
-| `tl 10 fwd` | Start Trench Left at 10 ft, drive forward and shoot |
-| `tr 10 fwd` | Start Trench Right at 10 ft, drive forward and shoot |
+| `bl 10 fwd` | Start at Bump Left starting line. Drive to shooting position 10 ft from hub, align shooter with hub, spin up and shoot. Stop — no post-shot movement. |
+| `bl 7.5 fwd` | Start at Bump Left starting line. Drive to shooting position 7.5 ft from hub, align, spin up and shoot. Stop. |
+| `br 10 fwd` | Start at Bump Right starting line. Drive to shooting position 10 ft from hub, align, spin up and shoot. Stop. |
+| `br 7.5 fwd` | Start at Bump Right starting line. Drive to shooting position 7.5 ft from hub, align, spin up and shoot. Stop. |
+| `c 10 fwd` | Start at Center starting line. Drive to shooting position 10 ft from hub, align, spin up and shoot. Stop. |
+| `c 7.5 fwd` | Start at Center starting line. Drive to shooting position 7.5 ft from hub, align, spin up and shoot. Stop. |
+| `tl 10 fwd` | Start at Trench Left starting line. Drive to shooting position 10 ft from hub, align, spin up and shoot. Stop. |
+| `tr 10 fwd` | Start at Trench Right starting line. Drive to shooting position 10 ft from hub, align, spin up and shoot. Stop. |
 
-### To Depot (Post-Shot Navigation to Alliance Depot)
-
-| Auto Name | Description |
-|-----------|-------------|
-| `bl 10 to depot` | Bump Left 10 ft — shoot, then navigate to depot |
-| `bl 7.5 to depot` | Bump Left 7.5 ft — shoot, then navigate to depot |
-| `br 10 to depot` | Bump Right 10 ft — shoot, then navigate to depot |
-| `br 7.5 to depot` | Bump Right 7.5 ft — shoot, then navigate to depot |
-| `tl 10 to depot` | Trench Left 10 ft — shoot, then navigate to depot |
-| `tr 10 to depot` | Trench Right 10 ft — shoot, then navigate to depot |
-
-### To Neutral Zone
+### To Depot (Shoot, Then Navigate to Alliance Depot)
 
 | Auto Name | Description |
 |-----------|-------------|
-| `bl 10 to neutral` | Bump Left 10 ft — shoot, then move to neutral zone |
-| `bl 7.5 to neutral` | Bump Left 7.5 ft — shoot, then move to neutral zone |
-| `br 10 to neutral` | Bump Right 10 ft — shoot, then move to neutral zone |
-| `br 7.5 to neutral` | Bump Right 7.5 ft — shoot, then move to neutral zone |
-| `c 7.5 to neutral` | Center 7.5 ft — shoot, then move to neutral zone |
-| `tl 10 to neutral` | Trench Left 10 ft — shoot, then move to neutral zone |
-| `tr 10 to neutral` | Trench Right 10 ft — shoot, then move to neutral zone |
-| `tr 10 to neutral (fix)` | Trench Right 10 ft to neutral — revised path (bug fix version) |
+| `bl 10 to depot` | Start at Bump Left. Drive to 10 ft shooting position, align, spin up and shoot. Then navigate to the alliance depot. |
+| `bl 7.5 to depot` | Start at Bump Left. Drive to 7.5 ft shooting position, align, spin up and shoot. Then navigate to the alliance depot. |
+| `br 10 to depot` | Start at Bump Right. Drive to 10 ft shooting position, align, spin up and shoot. Then navigate to the alliance depot. |
+| `br 7.5 to depot` | Start at Bump Right. Drive to 7.5 ft shooting position, align, spin up and shoot. Then navigate to the alliance depot. |
+| `tl 10 to depot` | Start at Trench Left. Drive to 10 ft shooting position, align, spin up and shoot. Then navigate to the alliance depot. |
+| `tr 10 to depot` | Start at Trench Right. Drive to 10 ft shooting position, align, spin up and shoot. Then navigate to the alliance depot. |
 
-### Center to Neutral (Multi-Path Variants)
+### To Neutral Zone (Shoot, Then Move to Neutral Zone)
 
 | Auto Name | Description |
 |-----------|-------------|
-| `c 7.5 to neutral (lb)` | Center 7.5 ft to neutral — left bump variant |
-| `c 7.5 to neutral (lt)` | Center 7.5 ft to neutral — left trench variant |
-| `c 7.5 to neutral (rb)` | Center 7.5 ft to neutral — right bump variant |
-| `c 7.5 to neutral (rt)` | Center 7.5 ft to neutral — right trench variant |
+| `bl 10 to neutral` | Start at Bump Left. Drive to 10 ft shooting position, align, spin up and shoot. Then move to the neutral zone. |
+| `bl 7.5 to neutral` | Start at Bump Left. Drive to 7.5 ft shooting position, align, spin up and shoot. Then move to the neutral zone. |
+| `br 10 to neutral` | Start at Bump Right. Drive to 10 ft shooting position, align, spin up and shoot. Then move to the neutral zone. |
+| `br 7.5 to neutral` | Start at Bump Right. Drive to 7.5 ft shooting position, align, spin up and shoot. Then move to the neutral zone. |
+| `c 7.5 to neutral` | Start at Center. Drive to 7.5 ft shooting position, align, spin up and shoot. Then move to the neutral zone. |
+| `tl 10 to neutral` | Start at Trench Left. Drive to 10 ft shooting position, align, spin up and shoot. Then move to the neutral zone. |
+| `tr 10 to neutral` | Start at Trench Right. Drive to 10 ft shooting position, align, spin up and shoot. Then move to the neutral zone. |
+| `tr 10 to neutral (fix)` | Trench Right 10 ft to neutral — revised version of the path above with a corrected route (created during competition to address a path problem). |
 
-### To Outpost
+### Center to Neutral (Multi-Route Variants)
+
+These four autos all start at Center and shoot from 7.5 ft, but take different routes through the field to reach the neutral zone. The route suffix indicates which field obstacle the robot passes by.
 
 | Auto Name | Description |
 |-----------|-------------|
-| `bl 10 to outpost` | Bump Left 10 ft — shoot, then navigate to outpost |
-| `br 10 to outpost` | Bump Right 10 ft — shoot, then navigate to outpost |
-| `tr 10 to outpost` | Trench Right 10 ft — shoot, then navigate to outpost |
+| `c 7.5 to neutral (lb)` | Start at Center. Shoot from 7.5 ft. Navigate to neutral zone via the left bump. |
+| `c 7.5 to neutral (lt)` | Start at Center. Shoot from 7.5 ft. Navigate to neutral zone via the left trench. |
+| `c 7.5 to neutral (rb)` | Start at Center. Shoot from 7.5 ft. Navigate to neutral zone via the right bump. |
+| `c 7.5 to neutral (rt)` | Start at Center. Shoot from 7.5 ft. Navigate to neutral zone via the right trench. |
+
+### To Outpost (Shoot, Then Navigate to Outpost)
+
+| Auto Name | Description |
+|-----------|-------------|
+| `bl 10 to outpost` | Start at Bump Left. Drive to 10 ft shooting position, align, spin up and shoot. Then navigate to the outpost (human player station). |
+| `br 10 to outpost` | Start at Bump Right. Drive to 10 ft shooting position, align, spin up and shoot. Then navigate to the outpost. |
+| `tr 10 to outpost` | Start at Trench Right. Drive to 10 ft shooting position, align, spin up and shoot. Then navigate to the outpost. |
 
 ---
 
